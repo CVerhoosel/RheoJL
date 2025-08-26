@@ -30,6 +30,8 @@ Given a vector `fᵥ` of length N, returns a vector of length N-1 where each ele
 
 # Examples
 ```jldoctest
+julia> using RheoJL
+
 julia> vertex_to_midpoint([1.0, 3.0, 7.0])
 2-element Vector{Float64}:
  2.0
