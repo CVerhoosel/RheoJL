@@ -1,11 +1,28 @@
 using Test
 using Documenter
 using RheoJL
+using LinearAlgebra
+import Logging
 
 @testset "Unittests" begin
-    @test vertex_to_midpoint([1.0, 3.0, 7.0]) == [2.0, 5.0]
+    @testset "Integration utilities" begin
+        N = 100
+        R₀ = 3.0
+        F = 5.0
+
+        rᵥ = collect(range(0, R₀, length=N))
+        rₘ = vertex_to_midpoint(rᵥ)
+        pᵥ₀ = (2*F)/(π*R₀^2) * (1.0 .- (rᵥ ./ R₀).^2)
+        ∂p∂rₘ₀ = -(4*F)/(π*R₀^4) * rₘ
+
+        @test norm(pᵥ₀ .- right_integrate(rᵥ, ∂p∂rₘ₀)) ≈ 0.0 atol=1e-10
+        @test integral(rᵥ, vertex_to_midpoint(2*π*rᵥ .* pᵥ₀)) ≈ F rtol=1e-3 
+    end
 end
 
 @testset "Doctests" begin
-    doctest(RheoJL)
+    # Suppress Documenter warnings during doctest
+    Logging.with_logger(Logging.SimpleLogger(stderr, Logging.Error)) do
+        doctest(RheoJL)
+    end
 end

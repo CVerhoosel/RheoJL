@@ -3,9 +3,19 @@ uuid = "83cecadf-1f82-4b25-be75-6a85a96a7494"
 authors = ["Clemens Verhoosel <c.v.verhoosel@tue.nl>"]
 version = "0.1.0"
 
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[compat]
+LinearAlgebra = "1.11"
+Logging = "1.11"
+Documenter = "1"
+Test = "1.11"
+
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Documenter"]
+test = ["Test", "Documenter", "Logging"]
