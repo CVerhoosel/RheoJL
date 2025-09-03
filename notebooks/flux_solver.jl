@@ -35,7 +35,7 @@ end
 
 # ╔═╡ 316a838d-57db-4194-b4e1-857f3afc44f6
 md"""
-# RheoJL flow profile test
+# RheoJL flux solver test
 """
 
 # ╔═╡ 2d4046cd-fd85-4f02-8126-469d296fda1a
@@ -97,7 +97,7 @@ begin
 end
 
 # ╔═╡ f3407c7b-4686-4a9d-b354-5d3e9c8a4033
-md"## System parameters"
+md"### System"
 
 # ╔═╡ 3a3ead59-460a-4730-a012-c1244d163446
 begin
@@ -128,7 +128,7 @@ begin
 end
 
 # ╔═╡ f3f1a628-577d-47da-aea2-ea6102aa5131
-md"## Discretization parameters"
+md"### Discretization"
 
 # ╔═╡ 86ac7298-2cfb-47df-8fca-5c157ac4383c
 begin
@@ -148,39 +148,42 @@ begin
 end
 
 # ╔═╡ e024bd4c-e501-42c8-9396-6900b3f5c583
-md"""## Plotting
-Set the pressure gradient:
+md"""## Flux solver
+Set the flux:
 """
 
 # ╔═╡ 2088b8d6-d9b1-4f8d-bcd8-44f872b333a9
 let
 	reset_parameters
-	dpdr_max = 4*τ₁/h
-	dpdr_range = range(-dpdr_max,dpdr_max,length=100)
+	dpdr_max = -4*τ₁/h
+	Q_max, _ = flux(h, dpdr_max, τ₁, K, n, η₀)
+	Q_range = range(-abs(Q_max), abs(Q_max),length=100)
 	md"""
-	``\frac{\partial p}{\partial r}``: $(@bind dpdr Slider(dpdr_range; default=0.5*dpdr_max, show_value=true))
-	"""
+	``Q~[m^2/s]``: $(@bind Q Slider(Q_range; default=0.5*abs(Q_max), show_value=true))
+	# """
 end
 
-# ╔═╡ f68edc63-fdf9-497a-89cb-355ca91032e6
-z, v, nw = velocity_profile(h, dpdr, τ₁, K, n, η₀);
-
-# ╔═╡ d5788ee3-73a0-432d-b7f3-eeb6f7c5b706
+# ╔═╡ 6b8c1efa-f4f7-45c7-b922-136422f8ecd7
 let
-	∂γ∂t_max = abs((v[end]-v[end-1])/(z[end]-z[end-1]))
-	plot([-∂γ∂t₀,∂γ∂t₀], [-τ₁,τ₁], linewidth=3, xlabel=L"\dot{\gamma}~[1/s]", ylabel=L"\tau~[Pa]", label="No yielding")
-	if ∂γ∂t_max > ∂γ∂t₀
-		∂γ∂t = range(∂γ∂t₀, ∂γ∂t_max, length=100)
-		plot!(∂γ∂t, τ₀.+K*∂γ∂t.^n; linewidth=3, color=2, label="Yielding")
-		plot!(-∂γ∂t, -τ₀.-K*∂γ∂t.^n; linewidth=3, color=2, label="")
+	# Plot the function
+	∂p∂r_max = 4*τ₁/h
+	∂p∂r_range = range(-∂p∂r_max, ∂p∂r_max,length=1000) 
+	
+	Q_range = first.(flux.(h, ∂p∂r_range, τ₁, K, n, η₀))
+	
+	plot(∂p∂r_range, Q_range, label="", xlabel=L"\frac{\partial p}{\partial r}", ylabel=L"Q")
+	plot!([-∂p∂r_max, ∂p∂r_max], [Q, Q], label="Target")
+
+	# Perform the iterations
+	∂p∂r, info = solve_∂p∂r.(h, τ₁, K, n, η₀, Q; verbose=true, ∂p∂r₀=-sign(Q)*∂p∂r_max)
+
+	plot!([∂p∂r], [Q], m=:star, label="Solution")
+	
+	for (i, (∂p∂rᵢ, Qᵢ, ∂Qᵢ)) in enumerate(info)
+		plot!([∂p∂rᵢ], [Qᵢ], m=:circle, label="Iteration $(i)")
 	end
-	plot!(title="Constitutive behavior")
-end
-
-# ╔═╡ 44d74c6c-5618-4290-84e3-a48a957a752c
-let
-	plot(v[1:nw], z[1:nw], label="Non-yielding", linewidth=3, xlabel=L"v~[m/s]", ylabel=L"z~[m]")
-	plot!(v[nw+1:end], z[nw+1:end], label="Yielding", linewidth=3, title="Velocity profile")
+	
+	plot!()
 end
 
 # ╔═╡ Cell order:
@@ -203,6 +206,4 @@ end
 # ╟─86ac7298-2cfb-47df-8fca-5c157ac4383c
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─2088b8d6-d9b1-4f8d-bcd8-44f872b333a9
-# ╟─f68edc63-fdf9-497a-89cb-355ca91032e6
-# ╟─d5788ee3-73a0-432d-b7f3-eeb6f7c5b706
-# ╟─44d74c6c-5618-4290-84e3-a48a957a752c
+# ╠═6b8c1efa-f4f7-45c7-b922-136422f8ecd7
