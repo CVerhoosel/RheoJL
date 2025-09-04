@@ -8,6 +8,7 @@ import Logging
 @testset "Unittests" begin
     include("test_utils.jl")
     include("test_squeeze_flow.jl")
+    include("test_solver.jl")
 end
 
 @testset "Doctests" begin

@@ -97,7 +97,7 @@ begin
 end
 
 # ╔═╡ f3407c7b-4686-4a9d-b354-5d3e9c8a4033
-md"## System parameters"
+md"### System"
 
 # ╔═╡ 3a3ead59-460a-4730-a012-c1244d163446
 begin
@@ -124,26 +124,6 @@ begin
 	| ``R_0`` | $(R₀) | ``m^3`` |
 	| ``V`` | $(V) | ``m^3`` |
 	| ``h`` | $(h) | ``m`` |
-	"""
-end
-
-# ╔═╡ f3f1a628-577d-47da-aea2-ea6102aa5131
-md"## Discretization parameters"
-
-# ╔═╡ 86ac7298-2cfb-47df-8fca-5c157ac4383c
-begin
-	reset_parameters
-	md"""
-	``N``: $(@bind N Slider(10:1000; default=100, show_value=true))
-	"""
-end
-
-# ╔═╡ 32a47bcd-10c5-440c-9339-3e47fca510ab
-begin
-	md"""
-	| Parameter | Value | Unit |
-	|-----------|-------|------|
-	| ``N`` | $(N) | ``-`` |
 	"""
 end
 
@@ -198,9 +178,6 @@ end
 # ╟─2d129381-d823-403f-8eec-4322da51ddd7
 # ╟─3a3ead59-460a-4730-a012-c1244d163446
 # ╟─584713b9-455a-4df4-9694-de8acf84f801
-# ╟─f3f1a628-577d-47da-aea2-ea6102aa5131
-# ╟─32a47bcd-10c5-440c-9339-3e47fca510ab
-# ╟─86ac7298-2cfb-47df-8fca-5c157ac4383c
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─2088b8d6-d9b1-4f8d-bcd8-44f872b333a9
 # ╟─f68edc63-fdf9-497a-89cb-355ca91032e6

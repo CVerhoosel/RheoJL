@@ -127,26 +127,6 @@ begin
 	"""
 end
 
-# ╔═╡ f3f1a628-577d-47da-aea2-ea6102aa5131
-md"### Discretization"
-
-# ╔═╡ 86ac7298-2cfb-47df-8fca-5c157ac4383c
-begin
-	reset_parameters
-	md"""
-	``N``: $(@bind N Slider(10:1000; default=100, show_value=true))
-	"""
-end
-
-# ╔═╡ 32a47bcd-10c5-440c-9339-3e47fca510ab
-begin
-	md"""
-	| Parameter | Value | Unit |
-	|-----------|-------|------|
-	| ``N`` | $(N) | ``-`` |
-	"""
-end
-
 # ╔═╡ e024bd4c-e501-42c8-9396-6900b3f5c583
 md"""## Flux solver
 Set the flux:
@@ -163,11 +143,19 @@ let
 	# """
 end
 
+# ╔═╡ 56336187-bfd8-44e5-91dc-ad9a8fce29e0
+let
+	reset_parameters
+	md"""
+	Skip fraction of iterations in plot: $(@bind skip Slider(range(0, 100,length=11); default=0, show_value=true))
+	# """
+end
+
 # ╔═╡ 6b8c1efa-f4f7-45c7-b922-136422f8ecd7
 let
 	# Plot the function
-	∂p∂r_max = 4*τ₁/h
-	∂p∂r_range = range(-∂p∂r_max, ∂p∂r_max,length=1000) 
+	∂p∂r_max = -(3.0*η₀*Q)/(2.0*h^3)
+	∂p∂r_range = range(-abs(∂p∂r_max), abs(∂p∂r_max),length=10_000) 
 	
 	Q_range = first.(flux.(h, ∂p∂r_range, τ₁, K, n, η₀))
 	
@@ -175,15 +163,21 @@ let
 	plot!([-∂p∂r_max, ∂p∂r_max], [Q, Q], label="Target")
 
 	# Perform the iterations
-	∂p∂r, info = solve_∂p∂r.(h, τ₁, K, n, η₀, Q; verbose=true, ∂p∂r₀=-sign(Q)*∂p∂r_max)
+	∂p∂r, info = solve_∂p∂r.(h, τ₁, K, n, η₀, Q; verbose=true, ∂p∂r₀=∂p∂r_max)
 
 	plot!([∂p∂r], [Q], m=:star, label="Solution")
-	
-	for (i, (∂p∂rᵢ, Qᵢ, ∂Qᵢ)) in enumerate(info)
-		plot!([∂p∂rᵢ], [Qᵢ], m=:circle, label="Iteration $(i)")
+
+	maxQ = 0
+	maxp = 0
+	for (i, (∂p∂rᵢ, Qᵢ, ∂Qᵢ, left, right)) in enumerate(info)
+		if i > skip*length(info)/100
+			plot!([∂p∂rᵢ], [Qᵢ], m=:circle, label="Iteration $(i)")
+			maxQ = max(maxQ, abs(Qᵢ))
+			maxp = max(maxp, abs(∂p∂rᵢ))
+		end
 	end
 	
-	plot!()
+	plot!(xlims=(-1.1*maxp, 1.1*maxp), ylims=(-1.1*maxQ, 1.1*maxQ))
 end
 
 # ╔═╡ Cell order:
@@ -201,9 +195,7 @@ end
 # ╟─2d129381-d823-403f-8eec-4322da51ddd7
 # ╟─3a3ead59-460a-4730-a012-c1244d163446
 # ╟─584713b9-455a-4df4-9694-de8acf84f801
-# ╟─f3f1a628-577d-47da-aea2-ea6102aa5131
-# ╟─32a47bcd-10c5-440c-9339-3e47fca510ab
-# ╟─86ac7298-2cfb-47df-8fca-5c157ac4383c
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─2088b8d6-d9b1-4f8d-bcd8-44f872b333a9
-# ╠═6b8c1efa-f4f7-45c7-b922-136422f8ecd7
+# ╟─6b8c1efa-f4f7-45c7-b922-136422f8ecd7
+# ╟─56336187-bfd8-44e5-91dc-ad9a8fce29e0
