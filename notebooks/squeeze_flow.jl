@@ -117,7 +117,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``F~[N]``: $(@bind F Slider(0.1:0.1:1.5; default=0.5, show_value=true))
+	``F~[N]``: $(@bind F Slider(0.1:0.1:5.0; default=1.5, show_value=true))
 	"""
 end
 
@@ -129,7 +129,7 @@ begin
 	md"""
 	| Parameter | Value | Unit |
 	|-----------|-------|------|
-	| ``R_0`` | $(R₀) | ``m^3`` |
+	| ``R_0`` | $(R₀) | ``m`` |
 	| ``V`` | $(V) | ``m^3`` |
 	| ``h`` | $(h) | ``m`` |
 	| ``F`` | $(F) | ``N`` |
@@ -151,7 +151,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``T~[s]``: $(@bind T Slider(10:10:10_000; default=5000, show_value=true))
+	``T~[s]``: $(@bind T Slider(10:10:1_000; default=300, show_value=true))
 	"""
 end
 
@@ -180,7 +180,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``\Delta t_{\rm max}``: $(@bind Δtₘₐₓ Slider(1:1:100; default=10, show_value=true))
+	``\Delta t_{\rm max}``: $(@bind Δtₘₐₓ Slider(1:1:100; default=1, show_value=true))
 	"""
 end
 
@@ -215,7 +215,7 @@ md"""## Time integration"""
 
 # ╔═╡ 8a353e56-f77f-4f9d-b2eb-26a04507db7c
 begin
-	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; Δ₀=Δ₀, targetiter=5, Δtₘₐₓ=Δtₘₐₓ, verbose=true)
+	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; Δ₀=Δ₀, targetiter=5, Δtₘₐₓ=Δtₘₐₓ, verbose=true, progress=true)
 	plot(sol[:,1], sol[:,3], label="Model")
 
 	df = load_data("experiments.csv")
@@ -251,7 +251,7 @@ end
 # ╟─da4031fa-1ff6-45ff-ab48-2ba31a6f1300
 # ╟─76aa1611-f856-4baa-b6c5-095d85c86445
 # ╟─9cc0c580-652e-44d8-8e0d-7291fc16e36e
-# ╠═41529b16-8175-4c8d-9f0f-8ba63f83ff6b
+# ╟─41529b16-8175-4c8d-9f0f-8ba63f83ff6b
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─f4fe528d-d827-49fb-a6a9-59c5508aadcb
 # ╟─f339ac8d-4544-41fd-ae00-7cac56c49215

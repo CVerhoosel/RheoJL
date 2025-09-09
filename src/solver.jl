@@ -184,10 +184,10 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], v
         end
     end
 
-    error("Newton solver did not converge in $(i) iterations")
+    error("Newton solver did not converge in $(maxiter) iterations")
 end
 
-function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; Δ₀=0.01, targetiter=6, Δtₘₐₓ=1, verbose=false)
+function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; Δ₀=0.01, targetiter=6, Δtₘₐₓ=1, verbose=false, progress=false)
 	
     # Initialization
     t       = 0.0
@@ -203,7 +203,12 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; Δ₀=0.01, t
 
 	sol  = [t h R]
     info = []
-	while t < T
+
+    p = progress ? Progress(100; desc="Time integration") : nothing
+    while t < T
+        if progress
+            ProgressMeter.update!(p, min(Int(round(t/T*100)), 100))
+        end
 
         # Update the height rate
         ∂h∂t, ∂h∂t_info = solve_system(h, R, τ₁, K, n, η₀, F, N; ∂h∂t₀=∂h∂t, ∂p∂r₀ₘ=∂p∂rₘ, verbose=verbose)
@@ -222,19 +227,19 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; Δ₀=0.01, t
 
         Δt *= targetiter / ( (∂h∂t_info isa Vector) ? size(∂h∂t_info,1) : ∂h∂t_info+1 )
         Δt = min(Δt, Δtₘₐₓ)
-        
+
         if t + Δt ≥ T
-			Δt = T - sol[end,1]
-		end
+            Δt = T - sol[end,1]
+        end
 
         # Update the height, radius and time
-		h = h + ∂h∂t * Δt
-		R = sqrt(V/(2*π*h))
-		t = t + Δt
+        h = h + ∂h∂t * Δt
+        R = sqrt(V/(2*π*h))
+        t = t + Δt
 
         # Store the solution
-		sol = vcat(sol, [t h R])
-	end
+        sol = vcat(sol, [t h R])
+    end
 
-	return sol, info
+    return sol, info
 end

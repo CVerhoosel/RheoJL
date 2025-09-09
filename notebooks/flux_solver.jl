@@ -153,17 +153,11 @@ end
 
 # ╔═╡ 6b8c1efa-f4f7-45c7-b922-136422f8ecd7
 let
-	# Plot the function
-	∂p∂r_min = -(3.0*η₀*Q)/(2.0*h^3)
-	∂p∂r_range = range(∂p∂r_min, 0,length=10_000) 
+	plot()
 	
-	Q_range = first.(flux.(h, ∂p∂r_range, τ₁, K, n, η₀))
-	
-	plot(∂p∂r_range, Q_range, label="", xlabel=L"\frac{\partial p}{\partial r}", ylabel=L"Q")
-	plot!([∂p∂r_min, 0], [Q, Q], label="Target")
-
 	# Perform the iterations
-	∂p∂r, info = solve_∂p∂r.(h, τ₁, K, n, η₀, Q; verbose=true, ∂p∂r₀=∂p∂r_min)
+	∂p∂r_min = -(3.0*η₀*Q)/(2.0*h^3)
+	∂p∂r, info = solve_∂p∂r.(h, τ₁, K, n, η₀, Q; verbose=true, ∂p∂r₀=∂p∂r_min, bracket=[-Inf,0])
 
 	maxQ = 0
 	minp = 0
@@ -176,6 +170,14 @@ let
 	end
 	
 	plot!([∂p∂r], [Q], m=:star, label="Solution", xlims=(1.1*minp, 0), ylims=(-0.1*maxQ, 1.1*maxQ), markersize=7)
+
+	# Plot the function
+	∂p∂r_range = range(1.1*minp, 0,length=10_000) 
+	
+	Q_range = first.(flux.(h, ∂p∂r_range, τ₁, K, n, η₀))
+	
+	plot!(∂p∂r_range, Q_range, label="", xlabel=L"\frac{\partial p}{\partial r}", ylabel=L"Q")
+	plot!([∂p∂r_min, 0], [Q, Q], label="Target")
 end
 
 # ╔═╡ Cell order:
@@ -195,5 +197,5 @@ end
 # ╟─584713b9-455a-4df4-9694-de8acf84f801
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─2088b8d6-d9b1-4f8d-bcd8-44f872b333a9
-# ╟─6b8c1efa-f4f7-45c7-b922-136422f8ecd7
+# ╠═6b8c1efa-f4f7-45c7-b922-136422f8ecd7
 # ╟─56336187-bfd8-44e5-91dc-ad9a8fce29e0
