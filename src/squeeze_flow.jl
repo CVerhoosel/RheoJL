@@ -81,3 +81,9 @@ function flux(h, ∂p∂r, τ₁, K, n, η₀)
 
     return Q1+Q2, ∂Q1+∂Q2 
 end
+
+function force(rᵥ, ∂p∂rₘ)
+	p = right_integrate(rᵥ, ∂p∂rₘ)
+	F = integral(rᵥ, vertex_to_midpoint(2*π*rᵥ.*p))
+	return F
+end

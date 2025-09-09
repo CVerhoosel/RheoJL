@@ -24,7 +24,7 @@ begin
     # activate the global environment
     Pkg.activate()
 	
-	using Revise, PlutoUI, Plots, LaTeXStrings
+	using Revise, PlutoUI, Plots, LaTeXStrings, Statistics
 	using RheoJL
 
 md"""
@@ -35,7 +35,7 @@ end
 
 # ╔═╡ 316a838d-57db-4194-b4e1-857f3afc44f6
 md"""
-# RheoJL flux solver test
+# RheoJL single time step test
 """
 
 # ╔═╡ 2d4046cd-fd85-4f02-8126-469d296fda1a
@@ -51,7 +51,7 @@ md"### Fluid"
 begin
 	reset_parameters
 	md"""
-	``\tau_{y}~[Pa]``: $(@bind τ₁ Slider(0:1:200; default=130, show_value=true))
+	``\tau_{y}~[Pa]``: $(@bind τ₁ Slider(0:1:300; default=130, show_value=true))
 	"""
 end
 
@@ -113,6 +113,14 @@ begin
 	"""
 end
 
+# ╔═╡ 25f30cff-5b1a-4309-99b2-1e59a68d69c5
+begin
+	reset_parameters
+	md"""
+	``F~[N]``: $(@bind F Slider(0.1:0.1:1.5; default=0.5, show_value=true))
+	"""
+end
+
 # ╔═╡ 2d129381-d823-403f-8eec-4322da51ddd7
 begin
 	V  = V_input / 1e6
@@ -124,58 +132,102 @@ begin
 	| ``R_0`` | $(R₀) | ``m^3`` |
 	| ``V`` | $(V) | ``m^3`` |
 	| ``h`` | $(h) | ``m`` |
+	| ``F`` | $(F) | ``N`` |
+	"""
+end
+
+# ╔═╡ c0a98c3e-4f48-4d3a-86de-e769a7fdf502
+md"### Discretization"
+
+# ╔═╡ da4031fa-1ff6-45ff-ab48-2ba31a6f1300
+begin
+	reset_parameters
+	md"""
+	``N``: $(@bind N Slider(10:1000; default=100, show_value=true))
+	"""
+end
+
+# ╔═╡ 76aa1611-f856-4baa-b6c5-095d85c86445
+begin
+	reset_parameters
+	md"""
+	``T~[s]``: $(@bind T Slider(10:10:10_000; default=5000, show_value=true))
+	"""
+end
+
+# ╔═╡ 9cc0c580-652e-44d8-8e0d-7291fc16e36e
+begin
+	reset_parameters
+	md"""
+	``\Delta_0``: $(@bind Δ₀ Slider(0.001:0.001:0.1; default=0.01, show_value=true))
+	"""
+end
+
+# ╔═╡ ffe187b0-45e6-4b42-98c8-5013d232ee01
+begin
+	rᵥ = collect(range(0, R₀, length=N))
+    rₘ = vertex_to_midpoint(rᵥ)
+	md"""
+	| Parameter | Value | Unit |
+	|-----------|-------|------|
+	| ``N`` | $(N) | ``-`` |
+	| ``T`` | $(T) | ``s`` |
+	| ``\Delta_0=-\frac{\dot{h}_0 \Delta t_0 }{ h_0 }`` |   $(Δ₀) | ``-`` |
+	"""
+end
+
+# ╔═╡ 41529b16-8175-4c8d-9f0f-8ba63f83ff6b
+begin
+	reset_parameters
+	md"""
+	``\Delta t_{\rm max}``: $(@bind Δtₘₐₓ Slider(1:1:100; default=10, show_value=true))
 	"""
 end
 
 # ╔═╡ e024bd4c-e501-42c8-9396-6900b3f5c583
-md"""## Flux solver
-Set the flux:
-"""
+md"""## Time step solver"""
 
-# ╔═╡ 2088b8d6-d9b1-4f8d-bcd8-44f872b333a9
-let
-	reset_parameters
-	dpdr_max = -4*τ₁/h
-	Q_max, _ = flux(h, dpdr_max, τ₁, K, n, η₀)
-	Q_range = range(0, abs(Q_max),length=100)
-	md"""
-	``Q~[m^2/s]``: $(@bind Q Slider(Q_range; default=0.5*abs(Q_max), show_value=true))
-	# """
-end
-
-# ╔═╡ 56336187-bfd8-44e5-91dc-ad9a8fce29e0
-let
-	reset_parameters
-	md"""
-	Skip fraction of iterations in plot: $(@bind skip Slider(range(0, 100,length=11); default=0, show_value=true))
-	# """
-end
-
-# ╔═╡ 6b8c1efa-f4f7-45c7-b922-136422f8ecd7
-let
-	# Plot the function
-	∂p∂r_min = -(3.0*η₀*Q)/(2.0*h^3)
-	∂p∂r_range = range(∂p∂r_min, 0,length=10_000) 
-	
-	Q_range = first.(flux.(h, ∂p∂r_range, τ₁, K, n, η₀))
-	
-	plot(∂p∂r_range, Q_range, label="", xlabel=L"\frac{\partial p}{\partial r}", ylabel=L"Q")
-	plot!([∂p∂r_min, 0], [Q, Q], label="Target")
-
-	# Perform the iterations
-	∂p∂r, info = solve_∂p∂r.(h, τ₁, K, n, η₀, Q; verbose=true, ∂p∂r₀=∂p∂r_min)
-
-	maxQ = 0
-	minp = 0
-	for (i, (∂p∂rᵢ, Qᵢ, left, right)) in enumerate(info)
-		if i > skip*length(info)/100
-			plot!([∂p∂rᵢ], [Qᵢ], m=:circle, label="Iteration $(i)", markersize=3)
-			maxQ = max(maxQ, abs(Qᵢ))
-			minp = min(minp, ∂p∂rᵢ)
-		end
+# ╔═╡ f4fe528d-d827-49fb-a6a9-59c5508aadcb
+begin
+	∂h∂t, info = solve_system(h, R₀, τ₁, K, n, η₀, F, N; verbose=true)
+	∂h∂t_range = collect(range(2*∂h∂t, 0, length=100))
+	F_range = []
+	for ∂h∂t ∈ ∂h∂t_range
+		Qₘ = -∂h∂t*rₘ
+		∂p∂r₀ₘ = -(4*F)/(π*R₀^4) * rₘ
+		results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; ∂p∂r₀=∂p∂r₀ₘ[i]) for i in 	eachindex(Qₘ)]
+		∂p∂rₘ = first.(results)
+		push!(F_range, force(rᵥ, ∂p∂rₘ))
 	end
-	
-	plot!([∂p∂r], [Q], m=:star, label="Solution", xlims=(1.1*minp, 0), ylims=(-0.1*maxQ, 1.1*maxQ), markersize=7)
+	plot(∂h∂t_range, F_range, label="", xlabel=L"\dot{h}", ylabel=L"F")
+	plot!([∂h∂t_range[1], ∂h∂t_range[end]], [F, F], label="Target")
+	plot!([∂h∂t],[F], label="Solution", m=:star, markersize=7)
+
+	for (i, (∂h∂tᵢ, Fᵢ, left, right)) in enumerate(info)
+		plot!([∂h∂tᵢ], [Fᵢ], m=:circle, label="Iteration $(i)", markersize=3)
+	end
+
+	plot!()
+end
+
+# ╔═╡ f339ac8d-4544-41fd-ae00-7cac56c49215
+md"""## Time integration"""
+
+# ╔═╡ 8a353e56-f77f-4f9d-b2eb-26a04507db7c
+begin
+	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; Δ₀=Δ₀, targetiter=5, Δtₘₐₓ=Δtₘₐₓ, verbose=true)
+	plot(sol[:,1], sol[:,3], label="Model")
+
+	df = load_data("experiments.csv")
+	cols = [:Radius_1, :Radius_2, :Radius_3,:Radius_4,:Radius_5]
+	t = Vector(df[:,:Time_1])
+	μ, σ = mean(Matrix(df[:,cols]), dims=2), std(Matrix(df[:,cols]), dims=2)
+
+	plot!(t, μ, yerr=σ, label="Data")
+
+	Rnewton = [R₀*(1 + (8*F*t*V^2)/(3*π^3*η₀*R₀^8))^(1/8) for t in sol[:,1]]
+
+	plot!(sol[:,1], Rnewton, label="Newtonian")
 end
 
 # ╔═╡ Cell order:
@@ -193,7 +245,14 @@ end
 # ╟─2d129381-d823-403f-8eec-4322da51ddd7
 # ╟─3a3ead59-460a-4730-a012-c1244d163446
 # ╟─584713b9-455a-4df4-9694-de8acf84f801
+# ╟─25f30cff-5b1a-4309-99b2-1e59a68d69c5
+# ╟─c0a98c3e-4f48-4d3a-86de-e769a7fdf502
+# ╟─ffe187b0-45e6-4b42-98c8-5013d232ee01
+# ╟─da4031fa-1ff6-45ff-ab48-2ba31a6f1300
+# ╟─76aa1611-f856-4baa-b6c5-095d85c86445
+# ╟─9cc0c580-652e-44d8-8e0d-7291fc16e36e
+# ╠═41529b16-8175-4c8d-9f0f-8ba63f83ff6b
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
-# ╟─2088b8d6-d9b1-4f8d-bcd8-44f872b333a9
-# ╟─6b8c1efa-f4f7-45c7-b922-136422f8ecd7
-# ╟─56336187-bfd8-44e5-91dc-ad9a8fce29e0
+# ╟─f4fe528d-d827-49fb-a6a9-59c5508aadcb
+# ╟─f339ac8d-4544-41fd-ae00-7cac56c49215
+# ╠═8a353e56-f77f-4f9d-b2eb-26a04507db7c
