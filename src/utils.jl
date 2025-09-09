@@ -1,3 +1,5 @@
+using CSV, DataFrames
+
 """
     right_integrate(rᵥ, fₘ)
 
@@ -77,4 +79,9 @@ julia> vertex_to_midpoint([1.0, 3.0, 7.0])
 """
 function vertex_to_midpoint(fᵥ)
     return 0.5*(fᵥ[1:end-1]+fᵥ[2:end])
+end
+
+function load_data(name)
+    data_path = joinpath(@__DIR__, "..", "data", name)
+    return CSV.read(data_path, DataFrame)
 end
