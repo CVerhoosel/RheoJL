@@ -81,6 +81,11 @@ function vertex_to_midpoint(fᵥ)
     return 0.5*(fᵥ[1:end-1]+fᵥ[2:end])
 end
 
+function list_data_files()
+    data_path = joinpath(@__DIR__, "..", "data")
+    return readdir(data_path)
+end
+
 function load_data(name)
     data_path = joinpath(@__DIR__, "..", "data", name)
     return CSV.read(data_path, DataFrame)

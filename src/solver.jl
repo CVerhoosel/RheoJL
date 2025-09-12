@@ -1,6 +1,6 @@
 function solve_∂p∂r(h, τ₁, K, n, η₀, Q; β=nothing, ∂p∂r₀=0.0, rtol=1e-6, atol=1e-12, maxiter=100, bracket=[-Inf, Inf], verbose=false)
 
-    @assert Q isa Real && Q ≥ 0  "Q must be a non-negative real number, since this should be enforced via the outer loop bracket."
+    @assert Q isa Real && Q ≥ -eps()  "Q must be a non-negative real number, since this should be enforced via the outer loop bracket."
 
     residual = ∂p∂r -> flux(h, ∂p∂r, τ₁, K, n, η₀; β=β) .- [Q,0.0]
 
@@ -17,8 +17,8 @@ end
 
 function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ=nothing, α=nothing, ∂p∂r₀ₘ=nothing, rtol=1e-6, atol=1e-12, maxiter=100, bracket=[-Inf, Inf], verbose=false)
 
-    @assert ∂h∂t isa Real && ∂h∂t ≤ 0 "∂h∂t must be a non-positive real number, since this should be enforced via the outer loop bracket."
-    @assert all(rᵥ .≥ 0) && all(isreal, rᵥ) "All rᵥ must be non-negative real numbers"
+    @assert ∂h∂t isa Real && ∂h∂t ≤ eps() "∂h∂t must be a non-positive real number, since this should be enforced via the outer loop bracket."
+    @assert all(rᵥ .≥ -eps()) && all(isreal, rᵥ) "All rᵥ must be non-negative real numbers"
     
     rₘ = vertex_to_midpoint(rᵥ)
     R  = rᵥ[end]

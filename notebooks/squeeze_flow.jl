@@ -259,21 +259,31 @@ end
 # ╔═╡ f339ac8d-4544-41fd-ae00-7cac56c49215
 md"""## Time integration"""
 
+# ╔═╡ 7ffd160c-3125-41ff-bb6c-b72fa26f4e08
+@bind data_files MultiCheckBox(list_data_files())
+
 # ╔═╡ 8a353e56-f77f-4f9d-b2eb-26a04507db7c
 begin
 	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; β=β, γ=γ, α=α, Δ₀=Δ₀, targetiter=5, Δtₘₐₓ=Δtₘₐₓ, verbose=true, progress=true)
-	plot(sol[:,1], sol[:,3], label="Model")
+	plot(sol[:,1], sol[:,3], label="Model", lw=3)
 
-	df = load_data("experiments.csv")
-	cols = [:Radius_1, :Radius_2, :Radius_3,:Radius_4,:Radius_5]
-	t = Vector(df[:,:Time_1])
-	μ, σ = mean(Matrix(df[:,cols]), dims=2), std(Matrix(df[:,cols]), dims=2)
+	for data_file in data_files
+		df = load_data(data_file)
 
-	plot!(t, μ, yerr=σ, label="Data")
+		t = Vector(df[:,:Time_1])
+		
+		radius_cols = filter(name -> startswith(String(name), "Radius"), names(df))
+		df_radius = df[:, radius_cols]
 
-	# Rnewton = [R₀*(1 + (8*F*t*V^2)/(3*π^3*η₀*R₀^8))^(1/8) for t in sol[:,1]]
-
-	# plot!(sol[:,1], Rnewton, label="Newtonian")
+		μ = mean(Matrix(df_radius), dims=2)
+		if length(radius_cols) > 1
+			σ = std(Matrix(df_radius), dims=2)
+			plot!(t, μ, yerr=σ, label=data_file)
+		else
+			plot!(t, μ, label=data_file)
+		end
+	end
+	plot!()
 end
 
 # ╔═╡ Cell order:
@@ -306,4 +316,5 @@ end
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─f4fe528d-d827-49fb-a6a9-59c5508aadcb
 # ╟─f339ac8d-4544-41fd-ae00-7cac56c49215
+# ╟─7ffd160c-3125-41ff-bb6c-b72fa26f4e08
 # ╟─8a353e56-f77f-4f9d-b2eb-26a04507db7c
