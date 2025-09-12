@@ -12,12 +12,12 @@ module RheoJL
     include("solver.jl")
 
     # Exports from "utils.jl"
-    export vertex_to_midpoint, right_integrate, integral, load_data
+    export vertex_to_midpoint, right_integrate, integral, list_data_files, load_data
 
     # Exports from "squeeze_flow.jl"
     export velocity_profile, flux, force
 
     # Exports from "solver.jl"
-    export solve_∂p∂r, solve_system, integrate_system,newton
+    export solve_∂p∂r, solve_system, integrate_system, newton
 
 end # module RheoJL
