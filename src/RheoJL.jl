@@ -5,6 +5,8 @@ A Julia package for rheology-related computations.
 """
 module RheoJL
 
+    using ProgressMeter
+
     include("utils.jl")
     include("squeeze_flow.jl")
     include("solver.jl")

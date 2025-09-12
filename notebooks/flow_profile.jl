@@ -99,6 +99,11 @@ end
 # ╔═╡ f3407c7b-4686-4a9d-b354-5d3e9c8a4033
 md"### System"
 
+# ╔═╡ 3772106b-1e2f-41a6-94bd-64a9459239c2
+md"""
+Allow slip: $(@bind allow_slip CheckBox(default=false))
+"""
+
 # ╔═╡ 3a3ead59-460a-4730-a012-c1244d163446
 begin
 	reset_parameters
@@ -113,17 +118,29 @@ begin
 	"""
 end
 
+# ╔═╡ 0fc3ad2f-6742-4b08-9114-b8d831498463
+begin
+	if allow_slip
+	reset_parameters
+	md"""
+	``\log_{10} \beta~[Pa \cdot s /m]``: $(@bind β_input Slider(0:0.2:10; default=6, show_value=true))
+	"""
+	end
+end
+
 # ╔═╡ 2d129381-d823-403f-8eec-4322da51ddd7
 begin
 	V  = V_input / 1e6
 	R₀ = R₀_input / 1e3
 	h  = (V/(π*R₀^2))/2
+	β  = allow_slip ? 10.0^β_input : nothing
 	md"""
 	| Parameter | Value | Unit |
 	|-----------|-------|------|
 	| ``R_0`` | $(R₀) | ``m^3`` |
 	| ``V`` | $(V) | ``m^3`` |
 	| ``h`` | $(h) | ``m`` |
+	| ``β`` | $(β) | ``Pa\cdot s / m`` |
 	"""
 end
 
@@ -143,7 +160,7 @@ let
 end
 
 # ╔═╡ f68edc63-fdf9-497a-89cb-355ca91032e6
-z, v, nw = velocity_profile(h, dpdr, τ₁, K, n, η₀);
+z, v, nw = velocity_profile(h, dpdr, τ₁, K, n, η₀; β=β);
 
 # ╔═╡ d5788ee3-73a0-432d-b7f3-eeb6f7c5b706
 let
@@ -160,7 +177,9 @@ end
 # ╔═╡ 44d74c6c-5618-4290-84e3-a48a957a752c
 let
 	plot(v[1:nw], z[1:nw], label="Non-yielding", linewidth=3, xlabel=L"v~[m/s]", ylabel=L"z~[m]")
-	plot!(v[nw+1:end], z[nw+1:end], label="Yielding", linewidth=3, title="Velocity profile")
+	xlim = v[1] > 0 ? (0, 1.1*v[1]) : (1.1*v[1],0)
+	plot!(v[nw+1:end], z[nw+1:end], label="Yielding", linewidth=3, title="Velocity profile", xlims=xlim)
+	plot!([v[end],0], [z[end],z[end]], label="Slip", linewidth=3, title="Velocity profile", xlims=xlim)
 end
 
 # ╔═╡ Cell order:
@@ -175,11 +194,13 @@ end
 # ╟─a8ba3e65-e0a2-4a9f-bda4-5c4a4a64f7a1
 # ╟─8c36449a-99f8-4bbc-9194-c432aae6708b
 # ╟─f3407c7b-4686-4a9d-b354-5d3e9c8a4033
-# ╟─2d129381-d823-403f-8eec-4322da51ddd7
+# ╠═2d129381-d823-403f-8eec-4322da51ddd7
+# ╠═3772106b-1e2f-41a6-94bd-64a9459239c2
 # ╟─3a3ead59-460a-4730-a012-c1244d163446
 # ╟─584713b9-455a-4df4-9694-de8acf84f801
+# ╠═0fc3ad2f-6742-4b08-9114-b8d831498463
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─2088b8d6-d9b1-4f8d-bcd8-44f872b333a9
-# ╟─f68edc63-fdf9-497a-89cb-355ca91032e6
+# ╠═f68edc63-fdf9-497a-89cb-355ca91032e6
 # ╟─d5788ee3-73a0-432d-b7f3-eeb6f7c5b706
-# ╟─44d74c6c-5618-4290-84e3-a48a957a752c
+# ╠═44d74c6c-5618-4290-84e3-a48a957a752c

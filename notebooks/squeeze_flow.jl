@@ -99,6 +99,16 @@ end
 # ╔═╡ f3407c7b-4686-4a9d-b354-5d3e9c8a4033
 md"### System"
 
+# ╔═╡ dab6942e-3ffa-458c-b09c-a90dd2cd622b
+md"""
+Allow slip: $(@bind allow_slip CheckBox(default=false))
+"""
+
+# ╔═╡ ef45baff-f705-488b-a0e5-f53c5351f452
+md"""
+Include capillary pressure: $(@bind include_capillary CheckBox(default=false))
+"""
+
 # ╔═╡ 3a3ead59-460a-4730-a012-c1244d163446
 begin
 	reset_parameters
@@ -109,7 +119,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``V~[ml]``: $(@bind V_input Slider(0.1:0.01:1.5; default=0.73, show_value=true))
+	``V~[ml]``: $(@bind V_input Slider(0.1:0.01:1.5; default=0.70, show_value=true))
 	"""
 end
 
@@ -117,8 +127,38 @@ end
 begin
 	reset_parameters
 	md"""
-	``F~[N]``: $(@bind F Slider(0.1:0.1:1.5; default=0.5, show_value=true))
+	``F~[N]``: $(@bind F Slider(0.1:0.1:5.0; default=1.5, show_value=true))
 	"""
+end
+
+# ╔═╡ b87384d8-97c1-4c55-a43d-0e7c16394f2b
+begin
+	if allow_slip
+	reset_parameters
+	md"""
+	``\log_{10} \beta~[Pa \cdot s /m]``: $(@bind β_input Slider(0:0.2:10; default=6, show_value=true))
+	"""
+	end
+end
+
+# ╔═╡ e1c4d2bd-342b-41ad-a2ef-75e50614140d
+begin
+	if include_capillary
+	reset_parameters
+	md"""
+	``\gamma~[N/m]``: $(@bind γ_input Slider(0:0.01:0.3; default=0.06, show_value=true))
+	"""
+	end
+end
+
+# ╔═╡ a6f0d7c4-40ea-4d02-9bdc-ff5d1d016d49
+begin
+	if include_capillary
+	reset_parameters
+	md"""
+	``\alpha~[-]``: $(@bind α_input Slider(0:0.1:1; default=0.5, show_value=true))
+	"""
+	end
 end
 
 # ╔═╡ 2d129381-d823-403f-8eec-4322da51ddd7
@@ -126,13 +166,19 @@ begin
 	V  = V_input / 1e6
 	R₀ = R₀_input / 1e3
 	h  = (V/(π*R₀^2))/2
+	β  = allow_slip ? 10.0^β_input : nothing
+	γ  = include_capillary ? γ_input : nothing
+	α  = include_capillary ? α_input : nothing
 	md"""
 	| Parameter | Value | Unit |
 	|-----------|-------|------|
-	| ``R_0`` | $(R₀) | ``m^3`` |
-	| ``V`` | $(V) | ``m^3`` |
-	| ``h`` | $(h) | ``m`` |
-	| ``F`` | $(F) | ``N`` |
+	| ``R_0`` | $(R₀) | ``m`` |
+	| ``V``   | $(V) | ``m^3`` |
+	| ``h_0`` | $(h) | ``m`` |
+	| ``F``   | $(F) | ``N`` |
+	| ``β``   | $(β) | ``Pa\cdot s / m`` |
+	| ``γ``   | $(γ) | ``N / m`` |
+	| ``α``   | $(α) | ``-`` |
 	"""
 end
 
@@ -151,7 +197,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``T~[s]``: $(@bind T Slider(10:10:10_000; default=5000, show_value=true))
+	``T~[s]``: $(@bind T Slider(10:10:1_000; default=300, show_value=true))
 	"""
 end
 
@@ -180,7 +226,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``\Delta t_{\rm max}``: $(@bind Δtₘₐₓ Slider(1:1:100; default=10, show_value=true))
+	``\Delta t_{\rm max}``: $(@bind Δtₘₐₓ Slider(1:1:100; default=1, show_value=true))
 	"""
 end
 
@@ -189,15 +235,15 @@ md"""## Time step solver"""
 
 # ╔═╡ f4fe528d-d827-49fb-a6a9-59c5508aadcb
 begin
-	∂h∂t, info = solve_system(h, R₀, τ₁, K, n, η₀, F, N; verbose=true)
+	∂h∂t, info = solve_system(h, R₀, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, verbose=true)
 	∂h∂t_range = collect(range(2*∂h∂t, 0, length=100))
 	F_range = []
 	for ∂h∂t ∈ ∂h∂t_range
 		Qₘ = -∂h∂t*rₘ
 		∂p∂r₀ₘ = -(4*F)/(π*R₀^4) * rₘ
-		results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; ∂p∂r₀=∂p∂r₀ₘ[i]) for i in 	eachindex(Qₘ)]
+		results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂r₀ₘ[i]) for i in 	eachindex(Qₘ)]
 		∂p∂rₘ = first.(results)
-		push!(F_range, force(rᵥ, ∂p∂rₘ))
+		push!(F_range, force(rᵥ, ∂p∂rₘ; h=h, γ=γ, α=α))
 	end
 	plot(∂h∂t_range, F_range, label="", xlabel=L"\dot{h}", ylabel=L"F")
 	plot!([∂h∂t_range[1], ∂h∂t_range[end]], [F, F], label="Target")
@@ -215,7 +261,7 @@ md"""## Time integration"""
 
 # ╔═╡ 8a353e56-f77f-4f9d-b2eb-26a04507db7c
 begin
-	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; Δ₀=Δ₀, targetiter=5, Δtₘₐₓ=Δtₘₐₓ, verbose=true)
+	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; β=β, γ=γ, α=α, Δ₀=Δ₀, targetiter=5, Δtₘₐₓ=Δtₘₐₓ, verbose=true, progress=true)
 	plot(sol[:,1], sol[:,3], label="Model")
 
 	df = load_data("experiments.csv")
@@ -225,9 +271,9 @@ begin
 
 	plot!(t, μ, yerr=σ, label="Data")
 
-	Rnewton = [R₀*(1 + (8*F*t*V^2)/(3*π^3*η₀*R₀^8))^(1/8) for t in sol[:,1]]
+	# Rnewton = [R₀*(1 + (8*F*t*V^2)/(3*π^3*η₀*R₀^8))^(1/8) for t in sol[:,1]]
 
-	plot!(sol[:,1], Rnewton, label="Newtonian")
+	# plot!(sol[:,1], Rnewton, label="Newtonian")
 end
 
 # ╔═╡ Cell order:
@@ -243,16 +289,21 @@ end
 # ╟─8c36449a-99f8-4bbc-9194-c432aae6708b
 # ╟─f3407c7b-4686-4a9d-b354-5d3e9c8a4033
 # ╟─2d129381-d823-403f-8eec-4322da51ddd7
+# ╟─dab6942e-3ffa-458c-b09c-a90dd2cd622b
+# ╟─ef45baff-f705-488b-a0e5-f53c5351f452
 # ╟─3a3ead59-460a-4730-a012-c1244d163446
 # ╟─584713b9-455a-4df4-9694-de8acf84f801
 # ╟─25f30cff-5b1a-4309-99b2-1e59a68d69c5
+# ╟─b87384d8-97c1-4c55-a43d-0e7c16394f2b
+# ╟─e1c4d2bd-342b-41ad-a2ef-75e50614140d
+# ╟─a6f0d7c4-40ea-4d02-9bdc-ff5d1d016d49
 # ╟─c0a98c3e-4f48-4d3a-86de-e769a7fdf502
 # ╟─ffe187b0-45e6-4b42-98c8-5013d232ee01
 # ╟─da4031fa-1ff6-45ff-ab48-2ba31a6f1300
 # ╟─76aa1611-f856-4baa-b6c5-095d85c86445
 # ╟─9cc0c580-652e-44d8-8e0d-7291fc16e36e
-# ╠═41529b16-8175-4c8d-9f0f-8ba63f83ff6b
+# ╟─41529b16-8175-4c8d-9f0f-8ba63f83ff6b
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─f4fe528d-d827-49fb-a6a9-59c5508aadcb
 # ╟─f339ac8d-4544-41fd-ae00-7cac56c49215
-# ╠═8a353e56-f77f-4f9d-b2eb-26a04507db7c
+# ╟─8a353e56-f77f-4f9d-b2eb-26a04507db7c
