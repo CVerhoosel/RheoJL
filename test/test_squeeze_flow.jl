@@ -32,10 +32,25 @@
         h₀  = (V/(π*R₀^2))/2
         N  = 100
         T  = 10.0
+        γ  = 0.06
+        α  = 0.5
+        β  = 1e6
 
         # Single time step
         ∂h∂t, info = solve_system(h₀, R₀, τ₁, K, n, η₀, F, N)
         @test ∂h∂t ≈ -(8*F*h₀^3)/(3*π*η₀*R₀^4) rtol=1e-3
+        @test info == 1
+
+        # Single time step with Laplace pressure
+        ∂h∂t, info = solve_system(h₀, R₀, τ₁, K, n, η₀, F, N; γ=γ, α=α)
+        Fₙₜ = F - (2*γ*α/h₀)*π*R₀^2
+        @test ∂h∂t ≈ -(8*Fₙₜ*h₀^3)/(3*π*η₀*R₀^4) rtol=1e-3
+        @test info == 1
+
+        # Single time step with slip
+        ∂h∂t, info = solve_system(h₀, R₀, τ₁, K, n, η₀, F, N; β=β)
+        ηₙₜ = η₀ / (1 + 3*η₀/(β*h₀))
+        @test ∂h∂t ≈ -(8*F*h₀^3)/(3*π*ηₙₜ*R₀^4) rtol=1e-3
         @test info == 1
 
         # Time integration
@@ -46,6 +61,8 @@
         @test R_end ≈ R₀*(1 + (8*F*T*V^2)/(3*π^3*η₀*R₀^8))^(1/8) rtol=1e-4
         @test h_end ≈ (V/(π*R_end^2))/2 rtol=1e-6
         @test h_end ≈ h₀*(1 + (32*F*T*h₀^2)/(3*π*η₀*R₀^4))^(-1/4) rtol=1e-4
+
+
     end
 
     @testset "Force calculation" begin
