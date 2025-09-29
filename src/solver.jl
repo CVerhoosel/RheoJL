@@ -1,12 +1,12 @@
-function solve_∂p∂r(h, τ₁, K, n, η₀, Q; β=nothing, ∂p∂r₀=0.0, rtol=1e-6, atol=1e-12, maxiter=100, bracket=[-Inf, Inf], verbose=false)
+function solve_∂p∂r(h, τ₁, K, n, η₀, Q; β=nothing, ∂p∂r₀=0.0, rtol=1e-6, atol=1e-12, maxiter=100, bracket=[-Inf, Inf], output=:short)
 
     @assert Q isa Real && Q ≥ -eps()  "Q must be a non-negative real number, since this should be enforced via the outer loop bracket."
 
     residual = ∂p∂r -> flux(h, ∂p∂r, τ₁, K, n, η₀; β=β) .- [Q,0.0]
 
-    ∂p∂r, info = newton(residual; x₀=∂p∂r₀, tol=rtol*abs(Q)+atol, maxiter=maxiter, bracket=bracket, verbose=verbose)
+    ∂p∂r, info = newton(residual; x₀=∂p∂r₀, tol=rtol*abs(Q)+atol, maxiter=maxiter, bracket=bracket, output=output)
 
-    if verbose
+    if output==:long
         for infoᵢ in info
             infoᵢ[2] += Q
         end
@@ -15,7 +15,7 @@ function solve_∂p∂r(h, τ₁, K, n, η₀, Q; β=nothing, ∂p∂r₀=0.0, r
 	return ∂p∂r, info
 end
 
-function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ=nothing, α=nothing, ∂p∂r₀ₘ=nothing, rtol=1e-6, atol=1e-12, maxiter=100, bracket=[-Inf, Inf], verbose=false)
+function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ=nothing, α=nothing, ∂p∂r₀ₘ=nothing, rtol=1e-6, atol=1e-12, maxiter=100, bracket=[-Inf, Inf], output=:short)
 
     @assert ∂h∂t isa Real && ∂h∂t ≤ eps() "∂h∂t must be a non-positive real number, since this should be enforced via the outer loop bracket."
     @assert all(rᵥ .≥ -eps()) && all(isreal, rᵥ) "All rᵥ must be non-negative real numbers"
@@ -31,7 +31,7 @@ function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ
     # Evaluate the flux
     Qₘ = -∂h∂t*rₘ
 
-	results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂r₀ₘ[i], rtol=rtol, atol=atol, maxiter=maxiter, bracket=bracket, verbose=verbose) for i in eachindex(Qₘ)]
+	results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂r₀ₘ[i], rtol=rtol, atol=atol, maxiter=maxiter, bracket=bracket, output=:short) for i in eachindex(Qₘ)]
     ∂p∂rₘ = getindex.(results, 1)
     info  = getindex.(results, 2)
 
@@ -45,21 +45,21 @@ function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ
     return r, ∂r∂∂h∂t
 end
 
-function solve_system(h, R, τ₁, K, n, η₀, F, N; β=nothing, γ=nothing, α=nothing, ∂h∂t₀=0.0, ∂p∂r₀ₘ=nothing, rtol=1e-6, atol=1e-12, maxiter=25, verbose=false, rtolinner=1e-6, atolinner=1e-12, maxiterinner=100, bracketinner=[-Inf, Inf], verboseinner=false)
+function solve_system(h, R, τ₁, K, n, η₀, F, N; β=nothing, γ=nothing, α=nothing, ∂h∂t₀=0.0, ∂p∂r₀ₘ=nothing, rtol=1e-6, atol=1e-12, maxiter=25, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=100, bracketinner=[-Inf, Inf], outputinner=false)
 
     # Get the vertices mesh
     rᵥ = collect(range(0, R, length=N))
 
     # Formulate the residual
-    residual = ∂h∂t -> residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=β, γ=γ, α=α, ∂p∂r₀ₘ=∂p∂r₀ₘ, rtol=rtolinner, atol=atolinner, maxiter=maxiterinner, bracket=bracketinner, verbose=verboseinner)
+    residual = ∂h∂t -> residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=β, γ=γ, α=α, ∂p∂r₀ₘ=∂p∂r₀ₘ, rtol=rtolinner, atol=atolinner, maxiter=maxiterinner, bracket=bracketinner, output=outputinner)
 
     # Prevent positive height rates
     bracket=[-Inf, 0]
 
     # Perform Newton iterations on the force residual
-    ∂h∂t, info = newton(residual, x₀=∂h∂t₀, tol=rtol*abs(F)+atol, maxiter=maxiter, bracket=bracket, verbose=verbose)
+    ∂h∂t, info = newton(residual, x₀=∂h∂t₀, tol=rtol*abs(F)+atol, maxiter=maxiter, bracket=bracket, output=output)
 
-    if verbose
+    if output==:long
         for infoᵢ in info
             infoᵢ[2] += F
         end
@@ -68,8 +68,9 @@ function solve_system(h, R, τ₁, K, n, η₀, F, N; β=nothing, γ=nothing, α
 	return ∂h∂t, info
 end
 
-function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], verbose=false)
+function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], output=:short)
 
+    @assert output in [:short, :long] "Output must be either :short or :long."
     @assert bracket isa AbstractVector{<:Real} && length(bracket) == 2 && bracket[1] < bracket[2] "Bracket must be a vector of two increasing real numbers."
     @assert x₀ isa Real && isfinite(x₀) && bracket[1] <= x₀ <= bracket[2] "x₀ must be a finite real number inside or on the boundary of the bracket"
 
@@ -84,7 +85,7 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], v
         end
 
         if abs(extrema[i]) < tol
-            return bracket[i], verbose ? [[bracket[i], extrema[i], bracket[1], bracket[2]]] : 0
+            return bracket[i], output==:long ? [[bracket[i], extrema[i], bracket[1], bracket[2]]] : 0
         end
     end
 
@@ -106,7 +107,7 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], v
 
     # Check whether the initial solution has converged
     if abs(rᵢ) < tol
-        return xᵢ, verbose ? info : 0
+        return xᵢ, output==:long ? info : 0
     end
 
     # Newton iterations
@@ -174,20 +175,20 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], v
         end
 
         # Store the new iteration for output
-        if verbose
+        if output==:long
             push!(info, [xᵢ, rᵢ, bracket[1], bracket[2]])
         end
 
         # Check whether the solution has converged
         if abs(rᵢ) < tol
-            return xᵢ, verbose ? info : i
+            return xᵢ, output==:long ? info : i
         end
     end
 
     error("Newton solver did not converge in $(maxiter) iterations")
 end
 
-function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, γ=nothing, α=nothing, Δ₀=0.01, targetiter=6, Δtₘₐₓ=1, verbose=false, progress=false)
+function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, γ=nothing, α=nothing, Δ₀=0.01, targetiter=6, Δtₘₐₓ=1, output=:short, progress=false)
 	
     # Initialization
     t       = 0.0
@@ -196,12 +197,13 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, �
     R       = R₀
     h       = h₀
     V       = 2*h*π*R^2
+    ∂R∂t    = -R*∂h∂t/(2*h)
     
     rᵥ    = collect(range(0, R₀, length=N))
     rₘ    = vertex_to_midpoint(rᵥ)
     ∂p∂rₘ = -(4*F)/(π*R^4) * rₘ
 
-	sol  = [t h R]
+	sol  = [t h R ∂h∂t ∂R∂t]
     info = []
 
     p = progress ? Progress(100; desc="Time integration") : nothing
@@ -211,7 +213,7 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, �
         end
 
         # Update the height rate
-        ∂h∂t, ∂h∂t_info = solve_system(h, R, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, ∂h∂t₀=∂h∂t, ∂p∂r₀ₘ=∂p∂rₘ, verbose=verbose)
+        ∂h∂t, ∂h∂t_info = solve_system(h, R, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, ∂h∂t₀=∂h∂t, ∂p∂r₀ₘ=∂p∂rₘ, output=output)
 
         push!(info, ∂h∂t_info)
 
@@ -235,10 +237,11 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, �
         # Update the height, radius and time
         h = h + ∂h∂t * Δt
         R = sqrt(V/(2*π*h))
+        ∂R∂t = -R*∂h∂t/(2*h)
         t = t + Δt
 
         # Store the solution
-        sol = vcat(sol, [t h R])
+        sol = vcat(sol, [t h R ∂h∂t ∂R∂t])
     end
 
     return sol, info

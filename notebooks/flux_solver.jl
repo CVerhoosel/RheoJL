@@ -134,13 +134,14 @@ begin
 	R₀ = R₀_input / 1e3
 	h  = (V/(π*R₀^2))/2
 	β  = allow_slip ? 10.0^β_input : nothing
-	md"""
+	β_text = isnothing(β) ? "-" : β 
+	md = md"""
 	| Parameter | Value | Unit |
 	|-----------|-------|------|
 	| ``R_0`` | $(R₀) | ``m^3`` |
 	| ``V`` | $(V) | ``m^3`` |
 	| ``h`` | $(h) | ``m`` |
-	| ``β`` | $(β) | ``Pa\cdot s / m`` |
+	| ``β`` | $(β_text) | ``Pa\cdot s / m`` |
 	"""
 end
 
@@ -174,7 +175,7 @@ let
 	
 	# Perform the iterations
 	∂p∂r_min = -(3.0*η₀*Q)/(2.0*h^3)
-	∂p∂r, info = solve_∂p∂r.(h, τ₁, K, n, η₀, Q; β=β, verbose=true, ∂p∂r₀=∂p∂r_min, bracket=[-Inf,0])
+	∂p∂r, info = solve_∂p∂r.(h, τ₁, K, n, η₀, Q; β=β, output=:long, ∂p∂r₀=∂p∂r_min, bracket=[-Inf,0])
 
 	maxQ = 0
 	minp = 0
@@ -203,13 +204,13 @@ end
 # ╟─2d4046cd-fd85-4f02-8126-469d296fda1a
 # ╟─8c337acd-42f9-4850-8f6f-d3397a3183c1
 # ╟─75987388-9b29-4505-b641-e1d4c8d72918
-# ╟─99a62371-6939-4c1f-af94-eeb7d177ceb7
+# ╠═99a62371-6939-4c1f-af94-eeb7d177ceb7
 # ╟─8c15239f-c3e8-4e79-99a8-9b8c5b56bc25
 # ╟─c58882b9-ca14-479f-ad4d-a98e194b5774
 # ╟─a8ba3e65-e0a2-4a9f-bda4-5c4a4a64f7a1
 # ╟─8c36449a-99f8-4bbc-9194-c432aae6708b
 # ╟─f3407c7b-4686-4a9d-b354-5d3e9c8a4033
-# ╟─2d129381-d823-403f-8eec-4322da51ddd7
+# ╠═2d129381-d823-403f-8eec-4322da51ddd7
 # ╟─8d4d30c3-812b-44d2-827a-308378f1e60d
 # ╟─3a3ead59-460a-4730-a012-c1244d163446
 # ╟─584713b9-455a-4df4-9694-de8acf84f801

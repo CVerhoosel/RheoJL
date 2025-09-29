@@ -235,7 +235,7 @@ md"""## Time step solver"""
 
 # ╔═╡ f4fe528d-d827-49fb-a6a9-59c5508aadcb
 begin
-	∂h∂t, info = solve_system(h, R₀, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, verbose=true)
+	∂h∂t, info = solve_system(h, R₀, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, output=:long)
 	∂h∂t_range = collect(range(2*∂h∂t, 0, length=100))
 	F_range = []
 	for ∂h∂t ∈ ∂h∂t_range
@@ -263,9 +263,9 @@ md"""## Time integration"""
 @bind data_files MultiCheckBox(list_data_files())
 
 # ╔═╡ 8a353e56-f77f-4f9d-b2eb-26a04507db7c
-begin
-	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; β=β, γ=γ, α=α, Δ₀=Δ₀, targetiter=5, Δtₘₐₓ=Δtₘₐₓ, verbose=true, progress=true)
-	plot(sol[:,1], sol[:,3], label="Model", lw=3)
+let
+	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; β=β, γ=γ, α=α, Δ₀=Δ₀, targetiter=5, Δtₘₐₓ=Δtₘₐₓ, output=:long, progress=true)
+	plot(sol[:,1], sol[:,3], label="Model", lw=3, xlabel=L"t~[s]", ylabel=L"R~[m]")
 
 	for data_file in data_files
 		df = load_data(data_file)
@@ -284,6 +284,12 @@ begin
 		end
 	end
 	plot!()
+end
+
+# ╔═╡ a1f3be43-2938-4b1c-ac77-4987b3bdadbb
+let
+	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; β=β, γ=γ, α=α, Δ₀=Δ₀, targetiter=5, Δtₘₐₓ=Δtₘₐₓ, output=:long, progress=true)
+	plot(sol[2:end,1], -sol[2:end,4]./sol[2:end,2], lw=3, xlabel=L"t~[s]", ylabel=L"-\dot{h}/h~[1/s]", yscale=:log10, label="")
 end
 
 # ╔═╡ Cell order:
@@ -318,3 +324,4 @@ end
 # ╟─f339ac8d-4544-41fd-ae00-7cac56c49215
 # ╟─7ffd160c-3125-41ff-bb6c-b72fa26f4e08
 # ╟─8a353e56-f77f-4f9d-b2eb-26a04507db7c
+# ╠═a1f3be43-2938-4b1c-ac77-4987b3bdadbb
