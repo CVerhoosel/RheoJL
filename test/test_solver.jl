@@ -1,7 +1,7 @@
 @testset "Newton solver" begin
     
     @testset "Linear function" begin
-        r = x -> (3x - 5, 3)
+        r = x -> (3x - 5, 3, [])
 
         x, info = newton(r, x₀=0.0)
         @test x ≈ 5/3
@@ -25,7 +25,7 @@
     end
    
    @testset "Nonlinear function" begin 
-        r = x -> (x^3 - 2x - 5, 3x^2 - 2)
+        r = x -> (x^3 - 2x - 5, 3x^2 - 2, [])
 
         x, info = newton(r, x₀=4.0, bracket=[0.0,5.0])
         @test x ≈ 2.094551525517854 rtol=1e-7

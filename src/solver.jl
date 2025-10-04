@@ -1,13 +1,23 @@
+function residual_∂p∂r(h, ∂p∂r, τ₁, K, n, η₀, Q; β=nothing)
+
+    Qᵢ, ∂Q∂∂p∂rᵢ = flux(h, ∂p∂r, τ₁, K, n, η₀; β=β)
+    
+    r       = Qᵢ - Q
+    ∂r∂∂p∂r = ∂Q∂∂p∂rᵢ
+
+    return r, ∂r∂∂p∂r, []
+end
+
 function solve_∂p∂r(h, τ₁, K, n, η₀, Q; β=nothing, ∂p∂r₀=0.0, rtol=1e-6, atol=1e-12, maxiter=100, bracket=[-Inf, Inf], output=:short)
 
     @assert Q isa Real && Q ≥ -eps()  "Q must be a non-negative real number, since this should be enforced via the outer loop bracket."
 
-    residual = ∂p∂r -> flux(h, ∂p∂r, τ₁, K, n, η₀; β=β) .- [Q,0.0]
+    residual = ∂p∂r -> residual_∂p∂r(h, ∂p∂r, τ₁, K, n, η₀, Q; β=β)
 
     ∂p∂r, info = newton(residual; x₀=∂p∂r₀, tol=rtol*abs(Q)+atol, maxiter=maxiter, bracket=bracket, output=output)
 
     if output==:long
-        for infoᵢ in info
+        for infoᵢ in eachrow(info)
             infoᵢ[2] += Q
         end
     end
@@ -31,9 +41,15 @@ function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ
     # Evaluate the flux
     Qₘ = -∂h∂t*rₘ
 
-	results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂r₀ₘ[i], rtol=rtol, atol=atol, maxiter=maxiter, bracket=bracket, output=:short) for i in eachindex(Qₘ)]
+	results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂r₀ₘ[i], rtol=rtol, atol=atol, maxiter=maxiter, bracket=bracket, output=output) for i in eachindex(Qₘ)]
     ∂p∂rₘ = getindex.(results, 1)
     info  = getindex.(results, 2)
+
+    if output==:long
+        iterations = size.(info,1) .- 1
+    else
+        iterations = info
+    end
 
     ∂Q∂∂p∂rₘ = last.(flux.(h, ∂p∂rₘ, τ₁, K, n, η₀; β=β))
     ∂∂p∂r∂∂h∂tₘ = -rₘ ./ ∂Q∂∂p∂rₘ
@@ -42,10 +58,10 @@ function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ
     r       = force(rᵥ, ∂p∂rₘ; h=h, γ=γ, α=α) - F
     ∂r∂∂h∂t = force(rᵥ, ∂∂p∂r∂∂h∂tₘ; h=h, γ=γ, α=α)
 
-    return r, ∂r∂∂h∂t
+    return r, ∂r∂∂h∂t, iterations
 end
 
-function solve_system(h, R, τ₁, K, n, η₀, F, N; β=nothing, γ=nothing, α=nothing, ∂h∂t₀=0.0, ∂p∂r₀ₘ=nothing, rtol=1e-6, atol=1e-12, maxiter=25, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=100, bracketinner=[-Inf, Inf], outputinner=false)
+function solve_system(h, R, τ₁, K, n, η₀, F, N; β=nothing, γ=nothing, α=nothing, ∂h∂t₀=0.0, ∂p∂r₀ₘ=nothing, rtol=1e-6, atol=1e-12, maxiter=25, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=100, bracketinner=[-Inf, Inf], outputinner=:short)
 
     # Get the vertices mesh
     rᵥ = collect(range(0, R, length=N))
@@ -60,7 +76,7 @@ function solve_system(h, R, τ₁, K, n, η₀, F, N; β=nothing, γ=nothing, α
     ∂h∂t, info = newton(residual, x₀=∂h∂t₀, tol=rtol*abs(F)+atol, maxiter=maxiter, bracket=bracket, output=output)
 
     if output==:long
-        for infoᵢ in info
+        for infoᵢ in eachrow(info)
             infoᵢ[2] += F
         end
     end
@@ -81,11 +97,12 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
     extrema = [-Inf, Inf]
     for i in 1:2
         if isfinite(bracket[i])
-            extrema[i], _ = residual(bracket[i])
+            extrema[i], _, iterstats = residual(bracket[i])
         end
 
         if abs(extrema[i]) < tol
-            return bracket[i], output==:long ? [[bracket[i], extrema[i], bracket[1], bracket[2]]] : 0
+            info = [bracket[i] extrema[i] bracket[1] bracket[2] iterstats...]
+            return bracket[i], output==:long ? info : 0
         end
     end
 
@@ -100,10 +117,10 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
     
     # Initialize the solution
     xᵢ = copy(x₀)
-    rᵢ, ∂rᵢ = residual(xᵢ)
+    rᵢ, ∂rᵢ, iterstats = residual(xᵢ)
 
     # Convergence information
-    info = [[xᵢ, rᵢ, bracket[1], bracket[2]]]
+    info = [xᵢ rᵢ bracket[1] bracket[2] iterstats...]
 
     # Check whether the initial solution has converged
     if abs(rᵢ) < tol
@@ -125,7 +142,7 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
 
             # Accept the Newton proposal
             xᵢ = xₙ
-            rᵢ, ∂rᵢ = residual(xᵢ)
+            rᵢ, ∂rᵢ, iterstats = residual(xᵢ)
 
             # Initialize the bracket
             if rᵢ*rᵢ₋₁ < 0.0
@@ -163,7 +180,7 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
             end
 
             # Update the bracket
-            rᵢ, ∂rᵢ = residual(xᵢ)
+            rᵢ, ∂rᵢ, iterstats = residual(xᵢ)
 
             if rᵢ*extrema[1] > 0.0
                 bracket[1] = xᵢ
@@ -176,7 +193,7 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
 
         # Store the new iteration for output
         if output==:long
-            push!(info, [xᵢ, rᵢ, bracket[1], bracket[2]])
+            info = vcat(info, [xᵢ rᵢ bracket[1] bracket[2] iterstats...])
         end
 
         # Check whether the solution has converged
@@ -188,8 +205,11 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
     error("Newton solver did not converge in $(maxiter) iterations")
 end
 
-function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, γ=nothing, α=nothing, Δ₀=0.01, targetiter=6, Δtₘₐₓ=1, output=:short, progress=false)
-	
+function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, γ=nothing, α=nothing, Δ₀=0.01, targetiter=6, Δtₘₐₓ=1, progress=false,
+    rtol=1e-6, atol=1e-12, maxiter=25, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=1_000, outputinner=:short)
+ 
+    @assert output in [:short, :long] "Output must be either :short or :long."
+
     # Initialization
     t       = 0.0
     Δt      = nothing
@@ -204,7 +224,7 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, �
     ∂p∂rₘ = -(4*F)/(π*R^4) * rₘ
 
 	sol  = [t h R ∂h∂t ∂R∂t]
-    info = []
+    info = output==:short ? [] : zeros(Float64, 0, N+3)
 
     p = progress ? Progress(100; desc="Time integration") : nothing
     while t < T
@@ -213,13 +233,15 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, �
         end
 
         # Update the height rate
-        ∂h∂t, ∂h∂t_info = solve_system(h, R, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, ∂h∂t₀=∂h∂t, ∂p∂r₀ₘ=∂p∂rₘ, output=output)
+        ∂h∂t, ∂h∂t_info = solve_system(h, R, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, ∂h∂t₀=∂h∂t, ∂p∂r₀ₘ=∂p∂rₘ,
+            rtol=rtol, atol=atol, maxiter=maxiter, output=output, 
+            rtolinner=rtolinner, atolinner=atolinner, maxiterinner=maxiterinner, outputinner=outputinner)
 
-        push!(info, ∂h∂t_info)
+        info = output==:short ? push!(info, ∂h∂t_info) : vcat(info, ∂h∂t_info)
 
         # Update the pressure gradient
         Qₘ      = -∂h∂t*rₘ
-        results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂rₘ[i]) for i in eachindex(Qₘ)]
+        results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂rₘ[i], rtol=rtolinner, atol=atolinner, maxiter=maxiterinner, output=outputinner) for i in eachindex(Qₘ)]
         ∂p∂rₘ   = getindex.(results, 1)
 
         # Update the time step
@@ -227,7 +249,7 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, �
             Δt = -Δ₀ * h / ∂h∂t
         end
 
-        Δt *= targetiter / ( (∂h∂t_info isa Vector) ? size(∂h∂t_info,1) : ∂h∂t_info+1 )
+        Δt *= targetiter / ( output==:short ? ∂h∂t_info+1 : size(∂h∂t_info,1) )
         Δt = min(Δt, Δtₘₐₓ)
 
         if t + Δt ≥ T
