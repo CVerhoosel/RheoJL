@@ -226,7 +226,7 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, �
     rₘ    = vertex_to_midpoint(rᵥ)
     ∂p∂rₘ = -(4*F)/(π*R^4) * rₘ
 
-	sol  = [t h R ∂h∂t ∂R∂t]
+	sol  = [[t h R ∂h∂t ∂R∂t]]
     info = []
 
     p = progress ? Progress(100; desc="Time integration") : nothing
@@ -252,11 +252,11 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, �
             Δt = -Δ₀ * h / ∂h∂t
         end
 
-        Δt *= targetiter * ( output==:short ? ∂h∂t_info+1 : size(∂h∂t_info,1) )^float(-targetpower)
+        Δt *= (targetiter / ( output==:short ? ∂h∂t_info+1 : size(∂h∂t_info,1) ))^float(targetpower)
         Δt = min(Δt, Δtₘₐₓ)
 
         if t + Δt ≥ T
-            Δt = T - sol[end,1]
+            Δt = T - sol[end][1]
         end
 
         # Update the height, radius and time
@@ -266,8 +266,8 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, �
         t = t + Δt
 
         # Store the solution
-        sol = vcat(sol, [t h R ∂h∂t ∂R∂t])
+        push!(sol, [t h R ∂h∂t ∂R∂t])
     end
 
-    return sol, info
+    return reduce(vcat, sol), info
 end

@@ -197,7 +197,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``T~[s]``: $(@bind T Slider(10:10:1_000; default=300, show_value=true))
+	``T~[s]``: $(@bind T Slider(10:10:1_000; default=150, show_value=true))
 	"""
 end
 
@@ -226,7 +226,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``\Delta t_{\rm max}``: $(@bind Δtₘₐₓ Slider(1:1:100; default=1, show_value=true))
+	``\Delta t_{\rm max}``: $(@bind Δtₘₐₓ Slider(1:1:100; default=10, show_value=true))
 	"""
 end
 
@@ -265,8 +265,8 @@ md"""## Time integration"""
 @bind data_files MultiCheckBox(list_data_files())
 
 # ╔═╡ 8a353e56-f77f-4f9d-b2eb-26a04507db7c
-let
-	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; β=β, γ=γ, α=α, Δ₀=Δ₀, Δtₘₐₓ=Δtₘₐₓ, output=:short, progress=true)
+begin
+	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; β=β, γ=γ, α=α, Δ₀=Δ₀, Δtₘₐₓ=Δtₘₐₓ, output=:long, progress=true, targetiter=5)
 	plot(sol[:,1], sol[:,3], label="Model", lw=3, xlabel=L"t~[s]", ylabel=L"R~[m]")
 
 	for data_file in data_files
@@ -286,6 +286,18 @@ let
 		end
 	end
 	plot!()
+end
+
+# ╔═╡ 9faeebaf-4210-402e-b903-2b1f2e2ed5a9
+let
+	bar( [size(sol_infoᵢ,1)-1 for sol_infoᵢ in sol_info], label="", xlabel=L"i_{\rm time}", ylabel=L"n_{\rm outer}" )
+	plot!(twinx(), sol[2:end,1]-sol[1:end-1,1], color=:red, ylabel=L"\Delta t~[s]", yscale=:log10, label="", linewidth=2)
+end
+
+# ╔═╡ 27577ae2-a446-49a8-a8f1-68198d89718d
+let
+	red_info = [reduce(vcat,[iter_info[5:end] for iter_info in sol_infoᵢ]) for sol_infoᵢ in sol_info]
+	boxplot(red_info, label="", xlabel=L"i_{\rm time}", ylabel=L"n_{\rm inner}")
 end
 
 # ╔═╡ Cell order:
@@ -320,4 +332,6 @@ end
 # ╟─3ab29162-283d-44d0-a378-0f93937e3f3f
 # ╟─f339ac8d-4544-41fd-ae00-7cac56c49215
 # ╟─7ffd160c-3125-41ff-bb6c-b72fa26f4e08
-# ╟─8a353e56-f77f-4f9d-b2eb-26a04507db7c
+# ╠═8a353e56-f77f-4f9d-b2eb-26a04507db7c
+# ╟─9faeebaf-4210-402e-b903-2b1f2e2ed5a9
+# ╟─27577ae2-a446-49a8-a8f1-68198d89718d
