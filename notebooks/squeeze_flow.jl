@@ -235,13 +235,13 @@ md"""## Time step solver"""
 
 # ╔═╡ f4fe528d-d827-49fb-a6a9-59c5508aadcb
 begin
-	∂h∂t, info = solve_system(h, R₀, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, maxiterinner=1_000, output=:long)
+	∂h∂t, info = solve_system(h, R₀, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, output=:long)
 	∂h∂t_range = collect(range(2*∂h∂t, 0, length=100))
 	F_range = []
 	for ∂h∂t ∈ ∂h∂t_range
 		Qₘ = -∂h∂t*rₘ
 		∂p∂r₀ₘ = -(4*F)/(π*R₀^4) * rₘ
-		results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, maxiter=1_000, ∂p∂r₀=∂p∂r₀ₘ[i]) for i in 	eachindex(Qₘ)]
+		results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂r₀ₘ[i]) for i in 	eachindex(Qₘ)]
 		∂p∂rₘ = first.(results)
 		push!(F_range, force(rᵥ, ∂p∂rₘ; h=h, γ=γ, α=α))
 	end
@@ -249,19 +249,14 @@ begin
 	plot!([∂h∂t_range[1], ∂h∂t_range[end]], [F, F], label="Target")
 	plot!([∂h∂t],[F], label="Solution", m=:star, markersize=7)
 
-	for (i, (∂h∂tᵢ, Fᵢ, left, right)) in enumerate(eachrow(info[:,1:4]))
+	for (i, (∂h∂tᵢ, Fᵢ, left, right, iterations...)) in enumerate(info)
 		plot!([∂h∂tᵢ], [Fᵢ], m=:circle, label="Iteration $(i)", markersize=3)
 	end
 	plot!()
 end
 
-# ╔═╡ 02e1eff5-f3db-474b-83b3-47f7369df2f8
-let
-	∂h∂t, info = solve_system(h, R₀, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, rtol=1e-6, atol=1e-12, maxiter=25, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=1_000, outputinner=:short)
-end
-
 # ╔═╡ 3ab29162-283d-44d0-a378-0f93937e3f3f
-	boxplot(info[:,5:end]', label="", xlabel="Outer iteration index", ylabel="Inner iteration number")
+	boxplot(reduce(hcat,info)[5:end,:], label="", xlabel=L"i_{\rm outer}", ylabel=L"n_{\rm inner}")
 
 # ╔═╡ f339ac8d-4544-41fd-ae00-7cac56c49215
 md"""## Time integration"""
@@ -271,7 +266,7 @@ md"""## Time integration"""
 
 # ╔═╡ 8a353e56-f77f-4f9d-b2eb-26a04507db7c
 let
-	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; β=β, γ=γ, α=α, Δ₀=Δ₀, targetiter=5, Δtₘₐₓ=Δtₘₐₓ, output=:short, progress=true)
+	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; β=β, γ=γ, α=α, Δ₀=Δ₀, Δtₘₐₓ=Δtₘₐₓ, output=:short, progress=true)
 	plot(sol[:,1], sol[:,3], label="Model", lw=3, xlabel=L"t~[s]", ylabel=L"R~[m]")
 
 	for data_file in data_files
@@ -321,9 +316,8 @@ end
 # ╟─9cc0c580-652e-44d8-8e0d-7291fc16e36e
 # ╟─41529b16-8175-4c8d-9f0f-8ba63f83ff6b
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
-# ╠═f4fe528d-d827-49fb-a6a9-59c5508aadcb
-# ╠═02e1eff5-f3db-474b-83b3-47f7369df2f8
-# ╠═3ab29162-283d-44d0-a378-0f93937e3f3f
+# ╟─f4fe528d-d827-49fb-a6a9-59c5508aadcb
+# ╟─3ab29162-283d-44d0-a378-0f93937e3f3f
 # ╟─f339ac8d-4544-41fd-ae00-7cac56c49215
 # ╟─7ffd160c-3125-41ff-bb6c-b72fa26f4e08
-# ╠═8a353e56-f77f-4f9d-b2eb-26a04507db7c
+# ╟─8a353e56-f77f-4f9d-b2eb-26a04507db7c
