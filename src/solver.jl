@@ -208,14 +208,14 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
     error("Newton solver did not converge in $(maxiter) iterations")
 end
 
-function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, γ=nothing, α=nothing, Δ₀=0.01, targetiter=5, targetpower=1, Δtₘₐₓ=Inf, progress=false,
+function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, γ=nothing, α=nothing, Δ₀=0.01, Δt₀=nothing, targetiter=5, targetpower=1, Δtₘₐₓ=Inf, progress=false,
     rtol=1e-6, atol=1e-12, maxiter=25, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=1_000, outputinner=:short)
  
     @assert output in [:short, :long] "Output must be either :short or :long."
 
     # Initialization
     t       = 0.0
-    Δt      = nothing
+    Δt      = Δt₀==nothing ? nothing : Δt₀
 	∂h∂t    = 0.0
     R       = R₀
     h       = h₀
