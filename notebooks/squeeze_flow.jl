@@ -35,7 +35,7 @@ end
 
 # ╔═╡ 316a838d-57db-4194-b4e1-857f3afc44f6
 md"""
-# RheoJL single time step test
+# RheoJL squeeze flow test
 """
 
 # ╔═╡ 2d4046cd-fd85-4f02-8126-469d296fda1a

@@ -68,7 +68,7 @@ end
 function solve_system(h, R, τ₁, K, n, η₀, F, N; β=nothing, γ=nothing, α=nothing, ∂h∂t₀=0.0, ∂p∂r₀ₘ=nothing, rtol=1e-6, atol=1e-12, maxiter=25, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=1_000, bracketinner=[-Inf, Inf], outputinner=:short)
 
     # Get the vertices mesh
-    rᵥ = collect(range(0, R, length=N))
+    rᵥ = collect(range(0, R, length=N+1))
 
     # Formulate the residual
     residual = ∂h∂t -> residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=β, γ=γ, α=α, ∂p∂r₀ₘ=∂p∂r₀ₘ, output=output, rtolinner=rtolinner, atolinner=atolinner, maxiterinner=maxiterinner, bracketinner=bracketinner, outputinner=outputinner)
@@ -208,35 +208,30 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
     error("Newton solver did not converge in $(maxiter) iterations")
 end
 
-function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, γ=nothing, α=nothing, Δ₀=0.01, Δt₀=nothing, targetiter=5, targetpower=1, Δtₘₐₓ=Inf, progress=false,
-    rtol=1e-6, atol=1e-12, maxiter=25, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=1_000, outputinner=:short)
+function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ; β=nothing, γ=nothing, α=nothing, Δ₀=0.01, Δt₀=nothing,
+    rtol=1e-6, atol=1e-12, maxiter=100, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=1_000, outputinner=:short)
  
     @assert output in [:short, :long] "Output must be either :short or :long."
 
     # Initialization
-    t       = 0.0
-    Δt      = Δt₀==nothing ? nothing : Δt₀
-	∂h∂t    = 0.0
-    R       = R₀
-    h       = h₀
-    V       = 2*h*π*R^2
-    ∂R∂t    = -R*∂h∂t/(2*h)
+    t    = 0.0
+	∂h∂t = 0.0
+    R    = R₀
+    h    = h₀
+    V    = 2*h*π*R^2
+    ∂R∂t = -R*∂h∂t/(2*h)
     
-    rᵥ    = collect(range(0, R₀, length=N))
+    rᵥ    = collect(range(0, R₀, length=Nᵣ+1))
     rₘ    = vertex_to_midpoint(rᵥ)
     ∂p∂rₘ = -(4*F)/(π*R^4) * rₘ
 
 	sol  = [[t h R ∂h∂t ∂R∂t]]
     info = []
 
-    p = progress ? Progress(100; desc="Time integration") : nothing
-    while t < T
-        if progress
-            ProgressMeter.update!(p, min(Int(round(t/T*100)), 100))
-        end
+    for i in 1:Nₜ
 
         # Update the height rate
-        ∂h∂t, ∂h∂t_info = solve_system(h, R, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, ∂h∂t₀=∂h∂t, ∂p∂r₀ₘ=∂p∂rₘ,
+        ∂h∂t, ∂h∂t_info = solve_system(h, R, τ₁, K, n, η₀, F, Nᵣ; β=β, γ=γ, α=α, ∂h∂t₀=∂h∂t, ∂p∂r₀ₘ=∂p∂rₘ,
             rtol=rtol, atol=atol, maxiter=maxiter, output=output, 
             rtolinner=rtolinner, atolinner=atolinner, maxiterinner=maxiterinner, outputinner=outputinner)
 
@@ -248,25 +243,18 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; β=nothing, �
         ∂p∂rₘ   = getindex.(results, 1)
 
         # Update the time step
-        if Δt === nothing
-            Δt = -Δ₀ * h / ∂h∂t
-        end
-
-        Δt *= (targetiter / ( output==:short ? ∂h∂t_info+1 : size(∂h∂t_info,1) ))^float(targetpower)
-        Δt = min(Δt, Δtₘₐₓ)
-
-        if t + Δt ≥ T
-            Δt = T - sol[end][1]
+        if i==1
+            Δt₀ = (Δt₀ === nothing) ? -Δ₀ * h / ∂h∂t : Δt₀
+            t   = geometric_time_sequence(T, Δt₀, Nₜ)
         end
 
         # Update the height, radius and time
-        h = h + ∂h∂t * Δt
+        h = h + ∂h∂t * (t[i+1] - t[i])
         R = sqrt(V/(2*π*h))
         ∂R∂t = -R*∂h∂t/(2*h)
-        t = t + Δt
 
         # Store the solution
-        push!(sol, [t h R ∂h∂t ∂R∂t])
+        push!(sol, [t[i+1] h R ∂h∂t ∂R∂t])
     end
 
     return reduce(vcat, sol), info
