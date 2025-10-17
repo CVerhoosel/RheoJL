@@ -5,14 +5,14 @@ A Julia package for rheology-related computations.
 """
 module RheoJL
 
-    using ProgressMeter
+    using CSV, DataFrames, Interpolations
 
     include("utils.jl")
     include("squeeze_flow.jl")
     include("solver.jl")
 
     # Exports from "utils.jl"
-    export vertex_to_midpoint, right_integrate, integral, list_data_files, load_data
+    export vertex_to_midpoint, right_integrate, integral, list_data_files, load_data, geometric_time_sequence
 
     # Exports from "squeeze_flow.jl"
     export velocity_profile, flux, force

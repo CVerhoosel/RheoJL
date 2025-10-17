@@ -1,4 +1,4 @@
-using CSV, DataFrames
+using NLsolve
 
 """
     right_integrate(rᵥ, fₘ)
@@ -86,7 +86,59 @@ function list_data_files()
     return readdir(data_path)
 end
 
-function load_data(name)
+function load_data(name; delim=' ', ignorerepeated=true)
     data_path = joinpath(@__DIR__, "..", "data", name)
-    return CSV.read(data_path, DataFrame)
+    return CSV.read(data_path, DataFrame; delim=delim, ignorerepeated=ignorerepeated)
+end
+
+using NLsolve
+
+"""
+    geometric_time_sequence(T, Δt₀, n)
+
+Generate a geometric time sequence `t = [0, t₁, t₂, ..., T]` where
+the first time step is `Δt₀` and there are `n` steps.  
+Each step satisfies `Δt[i+1] = α * Δt[i]`, and `α` is determined
+so that the total time equals `T`.
+
+# Arguments
+- `T::Float64`: total simulation time
+- `Δt₀::Float64`: initial time step
+- `n::Int`: number of time steps
+
+# Returns
+- `t`: cumulative time array of length `n+1`
+
+# Example
+```jldoctest
+julia> using RheoJL
+
+julia> t = geometric_time_sequence(10.0, 0.1, 20);
+
+julia> round(t[end], digits=3)
+10.0
+
+julia> round((t[3]-t[2])/0.1, digits=6)
+1.147962
+```
+"""
+function geometric_time_sequence(T::Float64, Δt₀::Float64, n::Int)
+
+    @assert n > 1 "Number of steps n must be greater than 1."
+    @assert Δt₀ > 0 "Initial time step Δt₀ must be positive."
+    @assert T > Δt₀ "Total time T must be greater than initial time step Δt₀."
+
+    # Define the function whose root gives α
+    f(α) = (1 - α^n) * Δt₀ - T * (1 - α)
+
+    # Initial guess (start near uniform)
+    α₀ = (T / Δt₀)^(1/n)
+
+    # Solve for α using NLsolve
+    α = nlsolve(x -> [f(x[1])], [α₀]).zero[1]
+
+    # Compute the time step sizes
+    Δt = [Δt₀ * α^(i-1) for i in 1:n]
+    
+    return cumsum([0.0; Δt])
 end
