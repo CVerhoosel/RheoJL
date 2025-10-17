@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.16
+# v0.20.19
 
 using Markdown
 using InteractiveUtils
@@ -51,7 +51,7 @@ md"### Fluid"
 begin
 	reset_parameters
 	md"""
-	``\tau_{y}~[Pa]``: $(@bind τ₁ Slider(0:1:200; default=130, show_value=true))
+	``\tau_{y}~[Pa]``: $(@bind τ₁ Slider(0:1:100; default=10, show_value=true))
 	"""
 end
 
@@ -59,7 +59,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``K~[Pa\cdot s^n]``: $(@bind K Slider(1:100; default=30, show_value=true))
+	``K~[Pa\cdot s^n]``: $(@bind K Slider(1:100; default=50, show_value=true))
 	"""
 end
 
@@ -67,7 +67,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``n~[-]``: $(@bind n Slider(0.01:0.01:1.5; default=0.4, show_value=true))
+	``n~[-]``: $(@bind n Slider(0.1:0.01:1.5; default=0.5, show_value=true))
 	"""
 end
 
@@ -75,14 +75,13 @@ end
 begin
 	reset_parameters
 	md"""
-	``\eta_0~[Pa \cdot s]``: $(@bind η₀ Slider(10:10:10_000; default=1000, show_value=true))
+	``{\rm log}_{10} \eta_0~[Pa \cdot s]``: $(@bind logη₀ Slider(1:8; default=5, show_value=true))
 	"""
 end
 
 # ╔═╡ 99a62371-6939-4c1f-af94-eeb7d177ceb7
 begin
-	#ε = 10.0^ε_input
-	#η₀ = 10*((n*K*τ₁^(n-1))/ε)^(1/n)
+	η₀=10^logη₀
 	∂γ∂t₀ = τ₁/η₀
 	τ₀ = τ₁ - K*∂γ∂t₀^n
 	md"""
@@ -107,14 +106,14 @@ Allow slip: $(@bind allow_slip CheckBox(default=false))
 # ╔═╡ 3a3ead59-460a-4730-a012-c1244d163446
 begin
 	reset_parameters
-	md"``R_0~[mm]``: $(@bind R₀_input Slider(5:0.1:25; default=13, show_value=true))"
+	md"``R_0~[mm]``: $(@bind R₀_input Slider(5:0.1:25; default=10, show_value=true))"
 end
 
 # ╔═╡ 584713b9-455a-4df4-9694-de8acf84f801
 begin
 	reset_parameters
 	md"""
-	``V~[ml]``: $(@bind V_input Slider(0.1:0.01:1.5; default=0.73, show_value=true))
+	``V~[ml]``: $(@bind V_input Slider(0.1:0.01:1.5; default=1.0, show_value=true))
 	"""
 end
 
@@ -165,21 +164,21 @@ z, v, nw = velocity_profile(h, dpdr, τ₁, K, n, η₀; β=β);
 # ╔═╡ d5788ee3-73a0-432d-b7f3-eeb6f7c5b706
 let
 	∂γ∂t_max = abs((v[end]-v[end-1])/(z[end]-z[end-1]))
-	plot([-∂γ∂t₀,∂γ∂t₀], [-τ₁,τ₁], linewidth=3, xlabel=L"\dot{\gamma}~[1/s]", ylabel=L"\tau~[Pa]", label="No yielding")
+	plot([-∂γ∂t₀,∂γ∂t₀], [-τ₁,τ₁], lw=2, xlabel=L"\dot{\gamma}~[1/s]", ylabel=L"\tau~[Pa]", label="No yielding")
 	if ∂γ∂t_max > ∂γ∂t₀
 		∂γ∂t = range(∂γ∂t₀, ∂γ∂t_max, length=100)
-		plot!(∂γ∂t, τ₀.+K*∂γ∂t.^n; linewidth=3, color=2, label="Yielding")
-		plot!(-∂γ∂t, -τ₀.-K*∂γ∂t.^n; linewidth=3, color=2, label="")
+		plot!(∂γ∂t, τ₀.+K*∂γ∂t.^n; lw=2, color=2, label="Yielding")
+		plot!(-∂γ∂t, -τ₀.-K*∂γ∂t.^n; lw=2, color=2, label="")
 	end
 	plot!(title="Constitutive behavior")
 end
 
 # ╔═╡ 44d74c6c-5618-4290-84e3-a48a957a752c
 let
-	plot(v[1:nw], z[1:nw], label="Non-yielding", linewidth=3, xlabel=L"v~[m/s]", ylabel=L"z~[m]")
+	plot(v[1:nw], z[1:nw], label="Non-yielding", lw=2, xlabel=L"v~[m/s]", ylabel=L"z~[m]")
 	xlim = v[1] > 0 ? (0, 1.1*v[1]) : (1.1*v[1],0)
-	plot!(v[nw+1:end], z[nw+1:end], label="Yielding", linewidth=3, title="Velocity profile", xlims=xlim)
-	plot!([v[end],0], [z[end],z[end]], label="Slip", linewidth=3, title="Velocity profile", xlims=xlim)
+	plot!(v[nw+1:end], z[nw+1:end], label="Yielding", lw=2, title="Velocity profile", xlims=xlim)
+	plot!([v[end],0], [z[end],z[end]], label="Slip", lw=2, title="Velocity profile", xlims=xlim)
 end
 
 # ╔═╡ Cell order:
@@ -201,6 +200,6 @@ end
 # ╟─0fc3ad2f-6742-4b08-9114-b8d831498463
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─2088b8d6-d9b1-4f8d-bcd8-44f872b333a9
-# ╠═f68edc63-fdf9-497a-89cb-355ca91032e6
+# ╟─f68edc63-fdf9-497a-89cb-355ca91032e6
 # ╟─d5788ee3-73a0-432d-b7f3-eeb6f7c5b706
 # ╟─44d74c6c-5618-4290-84e3-a48a957a752c

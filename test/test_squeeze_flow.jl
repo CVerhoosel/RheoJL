@@ -35,6 +35,8 @@
         γ  = 0.06
         α  = 0.5
         β  = 1e6
+        Nₜ = 500
+        Δt₀ = 0.001
 
         # Single time step
         ∂h∂t, info = solve_system(h₀, R₀, τ₁, K, n, η₀, F, N)
@@ -54,12 +56,12 @@
         @test info == 1
 
         # Time integration
-        sol, info = integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T; Δtₘₐₓ=0.1)
-        t_end, h_end, R_end = sol[end, :]
-        
+        sol, info = integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T, Nₜ, Δt₀)
+        t_end, σ_end, R_end = sol[end, :]
+        h_end = (V/(π*R_end^2))/2
+
         @test t_end ≈ T rtol=1e-6
         @test R_end ≈ R₀*(1 + (8*F*T*V^2)/(3*π^3*η₀*R₀^8))^(1/8) rtol=1e-4
-        @test h_end ≈ (V/(π*R_end^2))/2 rtol=1e-6
         @test h_end ≈ h₀*(1 + (32*F*T*h₀^2)/(3*π*η₀*R₀^4))^(-1/4) rtol=1e-4
 
 

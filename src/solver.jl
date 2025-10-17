@@ -208,7 +208,7 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
     error("Newton solver did not converge in $(maxiter) iterations")
 end
 
-function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ; β=nothing, γ=nothing, α=nothing, Δ₀=0.01, Δt₀=nothing,
+function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ, Δt₀; β=nothing, γ=nothing, α=nothing, Δₘₐₓ=0.1, target=5,
     rtol=1e-6, atol=1e-12, maxiter=100, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=1_000, outputinner=:short)
  
     @assert output in [:short, :long] "Output must be either :short or :long."
@@ -220,15 +220,27 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ; β=n
     h    = h₀
     V    = 2*h*π*R^2
     ∂R∂t = -R*∂h∂t/(2*h)
-    
+
+    # Define the initial pressure gradient
     rᵥ    = collect(range(0, R₀, length=Nᵣ+1))
     rₘ    = vertex_to_midpoint(rᵥ)
     ∂p∂rₘ = -(4*F)/(π*R^4) * rₘ
 
-	sol  = [[t h R ∂h∂t ∂R∂t]]
+    # Define the geometric time series
+    tₛ = geometric_time_sequence(T, Δt₀, Nₜ)
+    Δtₛ = tₛ[2:end] - tₛ[1:end-1]
+    ρ = Δtₛ[end] / Δtₛ[end-1]
+    Δtₛ = vcat(Δtₛ, [ρ*Δtₛ[end]])
+    Δtₛ = linear_interpolation(tₛ, Δtₛ)
+
+    # Initialize the time step scale
+    σ = 1.0
+
+    # Initialize the solution and info storage
+	sol  = [[t σ R]]
     info = []
 
-    for i in 1:Nₜ
+    while T-t > atol
 
         # Update the height rate
         ∂h∂t, ∂h∂t_info = solve_system(h, R, τ₁, K, n, η₀, F, Nᵣ; β=β, γ=γ, α=α, ∂h∂t₀=∂h∂t, ∂p∂r₀ₘ=∂p∂rₘ,
@@ -242,19 +254,35 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ; β=n
         results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂rₘ[i], rtol=rtolinner, atol=atolinner, maxiter=maxiterinner, output=outputinner) for i in eachindex(Qₘ)]
         ∂p∂rₘ   = getindex.(results, 1)
 
-        # Update the time step
-        if i==1
-            Δt₀ = (Δt₀ === nothing) ? -Δ₀ * h / ∂h∂t : Δt₀
-            t   = geometric_time_sequence(T, Δt₀, Nₜ)
+        # Get the current maximum time step as per the geometric series
+        Δtₘₐₓ = Δtₛ(t)
+
+        # Adjust the time step scale based on the number of Newton iterations
+        if target !== nothing
+            σ = min(1.0, σ*(target/ (output==:short ? ∂h∂t_info+1 : size(∂h∂t_info,1))))
+        end
+
+        # Scale the time step
+        Δt = σ*Δtₘₐₓ
+
+        # Limit the time step scale based on the maximum allowed height change
+        if Δₘₐₓ !== nothing && Δt*∂h∂t < -Δₘₐₓ*h
+            Δt = -Δₘₐₓ*h/∂h∂t
+        end
+        
+        # Clip the time step to not exceed the final time
+        if Δt > T-t
+            Δt = T-t
         end
 
         # Update the height, radius and time
-        h = h + ∂h∂t * (t[i+1] - t[i])
-        R = sqrt(V/(2*π*h))
+        t    = t + Δt
+        h    = h + ∂h∂t * Δt
+        R    = sqrt(V/(2*π*h))
         ∂R∂t = -R*∂h∂t/(2*h)
-
+        
         # Store the solution
-        push!(sol, [t[i+1] h R ∂h∂t ∂R∂t])
+        push!(sol, [t σ R])
     end
 
     return reduce(vcat, sol), info

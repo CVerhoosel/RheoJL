@@ -5,7 +5,7 @@ A Julia package for rheology-related computations.
 """
 module RheoJL
 
-    using CSV, DataFrames
+    using CSV, DataFrames, Interpolations
 
     include("utils.jl")
     include("squeeze_flow.jl")

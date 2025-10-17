@@ -86,9 +86,9 @@ function list_data_files()
     return readdir(data_path)
 end
 
-function load_data(name)
+function load_data(name; delim=' ', ignorerepeated=true)
     data_path = joinpath(@__DIR__, "..", "data", name)
-    return CSV.read(data_path, DataFrame)
+    return CSV.read(data_path, DataFrame; delim=delim, ignorerepeated=ignorerepeated)
 end
 
 using NLsolve
@@ -139,6 +139,6 @@ function geometric_time_sequence(T::Float64, Δt₀::Float64, n::Int)
 
     # Compute the time step sizes
     Δt = [Δt₀ * α^(i-1) for i in 1:n]
-
+    
     return cumsum([0.0; Δt])
 end

@@ -28,16 +28,16 @@ function error(sol, sol₀, tₘ)
     return mean( abs.( itp₀(tₘ) .- itp(tₘ) ) ./ itp₀(tₘ) )
 end
 
-function run_squeezeflow(N = 100, Δt₀ = 0.01, Nₜ = 100; scenario, tₘ)
+function run_squeezeflow(N, Δt₀, Nₜ; scenario, tₘ)
     (; τ₁, K, n, η₀, R₀, V, F, T) = scenario
-    h₀  = (V/(π*R₀^2))/2
+    h₀ = (V/(π*R₀^2))/2
 
-    sol, sol_info = integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T, Nₜ; Δt₀=Δt₀, output=:short)
+    sol, sol_info = integrate_system(h₀, R₀, τ₁, K, n, η₀, F, N, T, Nₜ, Δt₀; target=nothing, Δₘₐₓ=nothing, output=:short)
 
     return sol, sol_info
 end
 
-function mesh_convergence(N = 2 .^(2:12), Δt₀ = 2^-9, Nₜ = 2^8, overkill=2; scenario, tₘ, T_ref)
+function mesh_convergence(N, Δt₀, Nₜ, overkill; scenario, tₘ, T_ref)
     sols   = []
     times  = []
     
@@ -65,7 +65,7 @@ function mesh_convergence(N = 2 .^(2:12), Δt₀ = 2^-9, Nₜ = 2^8, overkill=2;
     display(fig_time)
 end
 
-function time_convergence(N = 2^4, Δt₀ = 2^-9, Nₜ = 2 .^(4:14), overkill=2; scenario, tₘ, T_ref)
+function time_convergence(N, Δt₀, Nₜ, overkill=2; scenario, tₘ, T_ref)
     sols  = []
     times = []
     
@@ -93,7 +93,7 @@ function time_convergence(N = 2^4, Δt₀ = 2^-9, Nₜ = 2 .^(4:14), overkill=2;
     display(fig_time)
 end
 
-function init_convergence(N = 2^4, Δt₀ = 2.0 .^(-7:-1:-16), Nₜ = 2^14, overkill=2; scenario, tₘ, T_ref)
+function init_convergence(N, Δt₀, Nₜ, overkill; scenario, tₘ, T_ref)
     sols  = []
     times = []
     
@@ -123,20 +123,20 @@ end
 
 Nᵣ = [4, 8, 16, 32, 64, 128, 256]
 Δt₀ = [2^-7, 2^-8, 2^-9, 2^-10, 2^-11, 2^-12, 2^-13]
-Nₜ = [128, 256, 512, 1024, 2048, 4096, 8192]
+Nₜ = [2^7, 2^8, 2^9, 2^10, 2^11, 2^12, 2^13]
 
 T_ref = @elapsed ref, ref_info = run_squeezeflow(Nᵣ[end], Δt₀[end], Nₜ[end]; scenario, tₘ)
 println("Reference simulation time: $T_ref [s]")
 
-# mesh_convergence(Nᵣ, Δt₀[end], Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
-# time_convergence(Nᵣ[end], Δt₀[end], Nₜ, 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
-# init_convergence(Nᵣ[end], Δt₀, Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
+mesh_convergence(Nᵣ, Δt₀[end], Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
+time_convergence(Nᵣ[end], Δt₀[end], Nₜ, 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
+init_convergence(Nᵣ[end], Δt₀, Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
 
-T_opt = @elapsed opt, opt_info = run_squeezeflow(16, 2^-9, 256; scenario, tₘ)
+T_opt = @elapsed opt, opt_info = run_squeezeflow(Nᵣ[3], Δt₀[3], Nₜ[3]; scenario, tₘ)
 println("Optimized simulation time: $T_opt [s]")
 println("Mean relative error: $(error(opt, ref, tₘ))")
 
-TFEM = CSV.read(joinpath(@__DIR__, "..", "data", "T-FEM.txt"), DataFrame; delim=' ', ignorerepeated=true)
+TFEM = load_data("T-FEM.txt")
 itp_TFEM = linear_interpolation(TFEM[!,"t[s]"], TFEM[!,"R[m]"])
 
 fig = plot(ref[:,1], ref[:,3], label="Reference", lw=2, xlabel=L"t~[s]", ylabel=L"R~[m]")

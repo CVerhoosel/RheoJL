@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.16
+# v0.20.19
 
 using Markdown
 using InteractiveUtils
@@ -51,7 +51,7 @@ md"### Fluid"
 begin
 	reset_parameters
 	md"""
-	``\tau_{y}~[Pa]``: $(@bind τ₁ Slider(0:1:200; default=130, show_value=true))
+	``\tau_{y}~[Pa]``: $(@bind τ₁ Slider(0:1:100; default=10, show_value=true))
 	"""
 end
 
@@ -59,7 +59,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``K~[Pa\cdot s^n]``: $(@bind K Slider(1:100; default=30, show_value=true))
+	``K~[Pa\cdot s^n]``: $(@bind K Slider(1:100; default=50, show_value=true))
 	"""
 end
 
@@ -67,7 +67,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``n~[-]``: $(@bind n Slider(0.01:0.01:1.5; default=0.4, show_value=true))
+	``n~[-]``: $(@bind n Slider(0.1:0.01:1.5; default=0.5, show_value=true))
 	"""
 end
 
@@ -75,14 +75,13 @@ end
 begin
 	reset_parameters
 	md"""
-	``\eta_0~[Pa \cdot s]``: $(@bind η₀ Slider(10:10:10_000; default=1000, show_value=true))
+	``{\rm log}_{10} \eta_0~[Pa \cdot s]``: $(@bind logη₀ Slider(1:8; default=5, show_value=true))
 	"""
 end
 
 # ╔═╡ 99a62371-6939-4c1f-af94-eeb7d177ceb7
 begin
-	#ε = 10.0^ε_input
-	#η₀ = 10*((n*K*τ₁^(n-1))/ε)^(1/n)
+	η₀=10^logη₀
 	∂γ∂t₀ = τ₁/η₀
 	τ₀ = τ₁ - K*∂γ∂t₀^n
 	md"""
@@ -107,14 +106,14 @@ Allow slip: $(@bind allow_slip CheckBox(default=false))
 # ╔═╡ 3a3ead59-460a-4730-a012-c1244d163446
 begin
 	reset_parameters
-	md"``R_0~[mm]``: $(@bind R₀_input Slider(5:0.1:25; default=13, show_value=true))"
+	md"``R_0~[mm]``: $(@bind R₀_input Slider(5:0.1:25; default=10, show_value=true))"
 end
 
 # ╔═╡ 584713b9-455a-4df4-9694-de8acf84f801
 begin
 	reset_parameters
 	md"""
-	``V~[ml]``: $(@bind V_input Slider(0.1:0.01:1.5; default=0.73, show_value=true))
+	``V~[ml]``: $(@bind V_input Slider(0.1:0.01:1.5; default=1.0, show_value=true))
 	"""
 end
 
@@ -181,7 +180,7 @@ let
 	minp = 0
 	for (i, (∂p∂rᵢ, Qᵢ, left, right)) in enumerate(info)
 		if i > skip*length(info)/100
-			plot!([∂p∂rᵢ], [Qᵢ], m=:circle, label="Iteration $(i)", markersize=3)
+			plot!([∂p∂rᵢ], [Qᵢ], m=:circle, label="Iteration $(i)", ms=2.)
 			maxQ = max(maxQ, abs(Qᵢ))
 			minp = min(minp, ∂p∂rᵢ)
 		end
@@ -194,8 +193,8 @@ let
 	
 	Q_range = first.(flux.(h, ∂p∂r_range, τ₁, K, n, η₀; β=β))
 	
-	plot!(∂p∂r_range, Q_range, label="", xlabel=L"\frac{\partial p}{\partial r}", ylabel=L"Q")
-	plot!([∂p∂r_min, 0], [Q, Q], label="Target")
+	plot!(∂p∂r_range, Q_range, label="", xlabel=L"\frac{\partial p}{\partial r}", ylabel=L"Q", lw=2)
+	plot!([∂p∂r_min, 0], [Q, Q], label="Target", lw=2)
 end
 
 # ╔═╡ Cell order:

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.16
+# v0.20.19
 
 using Markdown
 using InteractiveUtils
@@ -51,7 +51,7 @@ md"### Fluid"
 begin
 	reset_parameters
 	md"""
-	``\tau_{y}~[Pa]``: $(@bind τ₁ Slider(0:1:300; default=130, show_value=true))
+	``\tau_{y}~[Pa]``: $(@bind τ₁ Slider(0:1:100; default=10, show_value=true))
 	"""
 end
 
@@ -59,7 +59,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``K~[Pa\cdot s^n]``: $(@bind K Slider(1:100; default=30, show_value=true))
+	``K~[Pa\cdot s^n]``: $(@bind K Slider(1:100; default=50, show_value=true))
 	"""
 end
 
@@ -67,7 +67,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``n~[-]``: $(@bind n Slider(0.01:0.01:1.5; default=0.4, show_value=true))
+	``n~[-]``: $(@bind n Slider(0.1:0.01:1.5; default=0.5, show_value=true))
 	"""
 end
 
@@ -75,14 +75,13 @@ end
 begin
 	reset_parameters
 	md"""
-	``\eta_0~[Pa \cdot s]``: $(@bind η₀ Slider(10:10:10_000; default=1000, show_value=true))
+	``{\rm log}_{10} \eta_0~[Pa \cdot s]``: $(@bind logη₀ Slider(1:8; default=5, show_value=true))
 	"""
 end
 
 # ╔═╡ 99a62371-6939-4c1f-af94-eeb7d177ceb7
 begin
-	#ε = 10.0^ε_input
-	#η₀ = 10*((n*K*τ₁^(n-1))/ε)^(1/n)
+	η₀=10^logη₀
 	∂γ∂t₀ = τ₁/η₀
 	τ₀ = τ₁ - K*∂γ∂t₀^n
 	md"""
@@ -112,14 +111,14 @@ Include capillary pressure: $(@bind include_capillary CheckBox(default=false))
 # ╔═╡ 3a3ead59-460a-4730-a012-c1244d163446
 begin
 	reset_parameters
-	md"``R_0~[mm]``: $(@bind R₀_input Slider(5:0.1:25; default=13, show_value=true))"
+	md"``R_0~[mm]``: $(@bind R₀_input Slider(5:0.1:25; default=10, show_value=true))"
 end
 
 # ╔═╡ 584713b9-455a-4df4-9694-de8acf84f801
 begin
 	reset_parameters
 	md"""
-	``V~[ml]``: $(@bind V_input Slider(0.1:0.01:1.5; default=0.70, show_value=true))
+	``V~[ml]``: $(@bind V_input Slider(0.1:0.01:1.5; default=1.0, show_value=true))
 	"""
 end
 
@@ -127,7 +126,7 @@ end
 begin
 	reset_parameters
 	md"""
-	``F~[N]``: $(@bind F Slider(0.1:0.1:5.0; default=1.5, show_value=true))
+	``F~[N]``: $(@bind F Slider(0.1:0.1:5.0; default=1.0, show_value=true))
 	"""
 end
 
@@ -189,7 +188,7 @@ md"### Discretization"
 begin
 	reset_parameters
 	md"""
-	``N``: $(@bind N Slider(10:1000; default=100, show_value=true))
+	``{\rm log}_2 N_r``: $(@bind log₂Nᵣ Slider(2:8; default=4, show_value=true))
 	"""
 end
 
@@ -197,7 +196,15 @@ end
 begin
 	reset_parameters
 	md"""
-	``T~[s]``: $(@bind T Slider(10:10:1_000; default=150, show_value=true))
+	``T~[s]``: $(@bind T Slider(10.0:10.0:1_000.0; default=100.0, show_value=true))
+	"""
+end
+
+# ╔═╡ a210cf54-d098-4e09-9724-5d2c71119926
+begin
+	reset_parameters
+	md"""
+	``{\rm log}_2 N_t``: $(@bind log₂Nₜ Slider(5:13; default=9, show_value=true))
 	"""
 end
 
@@ -205,28 +212,64 @@ end
 begin
 	reset_parameters
 	md"""
-	``\Delta_0``: $(@bind Δ₀ Slider(0.001:0.001:0.1; default=0.01, show_value=true))
+	``{\rm log}_2 \Delta t_0~[s]``: $(@bind log₂Δt₀ Slider(-13:-7; default=-9, show_value=true))
 	"""
 end
 
-# ╔═╡ ffe187b0-45e6-4b42-98c8-5013d232ee01
+# ╔═╡ 8b2900e6-e785-443d-a6c3-7ee5da5d4397
 begin
-	rᵥ = collect(range(0, R₀, length=N))
-    rₘ = vertex_to_midpoint(rᵥ)
+	reset_parameters
 	md"""
-	| Parameter | Value | Unit |
-	|-----------|-------|------|
-	| ``N`` | $(N) | ``-`` |
-	| ``T`` | $(T) | ``s`` |
-	| ``\Delta_0=-\frac{\dot{h}_0 \Delta t_0 }{ h_0 }`` |   $(Δ₀) | ``-`` |
+	Limit maximum height rate: $(@bind limit_height CheckBox(default=true))
+	"""
+end
+
+# ╔═╡ cbdc03d9-a76e-40e3-a4ad-44395a41378c
+begin
+	reset_parameters
+	md"""
+	Iteration target: $(@bind iter_target CheckBox(default=true))
 	"""
 end
 
 # ╔═╡ 41529b16-8175-4c8d-9f0f-8ba63f83ff6b
 begin
+	if limit_height
+		reset_parameters
+		md"""
+		``{\rm log}_2 \Delta_{\rm max}``: $(@bind log₂Δₘₐₓ Slider(-10:-1; default=-3, show_value=true))
+		"""
+	end
+end
+
+# ╔═╡ 81d07b2b-16e7-4f1b-b965-6caf471c769f
+begin
+	target=nothing
+	if iter_target
 	reset_parameters
 	md"""
-	``\Delta t_{\rm max}``: $(@bind Δtₘₐₓ Slider(1:1:100; default=10, show_value=true))
+	``n_{\rm target}``: $(@bind target Slider(3:8; default=5, show_value=true))
+	"""
+	end
+end
+
+# ╔═╡ ffe187b0-45e6-4b42-98c8-5013d232ee01
+begin
+	Nᵣ = 2^log₂Nᵣ
+	Nₜ = 2^log₂Nₜ
+	Δt₀ = 2.0^log₂Δt₀
+	Δₘₐₓ = limit_height ? 2.0^log₂Δₘₐₓ : nothing
+	rᵥ = collect(range(0, R₀, length=Nᵣ))
+    rₘ = vertex_to_midpoint(rᵥ)
+	md"""
+	| Parameter | Value | Unit |
+	|-----------|-------|------|
+	| ``N_r`` | $(Nᵣ) | ``-`` |
+	| ``T`` | $(T) | ``s`` |
+	| ``N_t`` | $(Nₜ) | ``-`` |
+	| ``\Delta t_0`` | $(Δt₀) | ``s`` |
+	| ``\Delta_{\rm max}=-\frac{\dot{h} \Delta t }{ h }`` |   $(Δₘₐₓ) | ``-`` |
+	| ``n_{\rm target}`` |   $(target) | ``-`` |
 	"""
 end
 
@@ -235,7 +278,7 @@ md"""## Time step solver"""
 
 # ╔═╡ f4fe528d-d827-49fb-a6a9-59c5508aadcb
 begin
-	∂h∂t, info = solve_system(h, R₀, τ₁, K, n, η₀, F, N; β=β, γ=γ, α=α, output=:long)
+	∂h∂t, info = solve_system(h, R₀, τ₁, K, n, η₀, F, Nᵣ; β=β, γ=γ, α=α, output=:long)
 	∂h∂t_range = collect(range(2*∂h∂t, 0, length=100))
 	F_range = []
 	for ∂h∂t ∈ ∂h∂t_range
@@ -245,8 +288,8 @@ begin
 		∂p∂rₘ = first.(results)
 		push!(F_range, force(rᵥ, ∂p∂rₘ; h=h, γ=γ, α=α))
 	end
-	plot(∂h∂t_range, F_range, label="", xlabel=L"\dot{h}", ylabel=L"F")
-	plot!([∂h∂t_range[1], ∂h∂t_range[end]], [F, F], label="Target")
+	plot(∂h∂t_range, F_range, label="", xlabel=L"\dot{h}", ylabel=L"F", lw=2)
+	plot!([∂h∂t_range[1], ∂h∂t_range[end]], [F, F], label="Target", lw=2)
 	plot!([∂h∂t],[F], label="Solution", m=:star, markersize=7)
 
 	for (i, (∂h∂tᵢ, Fᵢ, left, right, iterations...)) in enumerate(info)
@@ -266,38 +309,37 @@ md"""## Time integration"""
 
 # ╔═╡ 8a353e56-f77f-4f9d-b2eb-26a04507db7c
 begin
-	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, N, T; β=β, γ=γ, α=α, Δ₀=Δ₀, Δtₘₐₓ=Δtₘₐₓ, output=:long, progress=true, targetiter=5)
-	plot(sol[:,1], sol[:,3], label="Model", lw=3, xlabel=L"t~[s]", ylabel=L"R~[m]")
+	sol, sol_info = integrate_system(h, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ, Δt₀; β=β, γ=γ, α=α, Δₘₐₓ=Δₘₐₓ, target=target, output=:long)
+	plot(sol[:,1], sol[:,3], label="Model", lw=2, xlabel=L"t~[s]", ylabel=L"R~[m]")
 
 	for data_file in data_files
 		df = load_data(data_file)
-
-		t = Vector(df[:,:Time_1])
-		
-		radius_cols = filter(name -> startswith(String(name), "Radius"), names(df))
-		df_radius = df[:, radius_cols]
-
-		μ = mean(Matrix(df_radius), dims=2)
-		if length(radius_cols) > 1
-			σ = std(Matrix(df_radius), dims=2)
-			plot!(t, μ, yerr=σ, label=data_file)
-		else
-			plot!(t, μ, label=data_file)
-		end
+		plot!(Vector(df[!,"t[s]"]), Vector(df[!,"R[m]"]), label=data_file, lw=2)
 	end
 	plot!()
 end
 
 # ╔═╡ 9faeebaf-4210-402e-b903-2b1f2e2ed5a9
 let
-	bar( [size(sol_infoᵢ,1)-1 for sol_infoᵢ in sol_info], label="", xlabel=L"i_{\rm time}", ylabel=L"n_{\rm outer}" )
-	plot!(twinx(), sol[2:end,1]-sol[1:end-1,1], color=:red, ylabel=L"\Delta t~[s]", yscale=:log10, label="", linewidth=2)
+	niter = [size(sol_infoᵢ,1)-1 for sol_infoᵢ in sol_info]
+	plot(niter , label="", xlabel=L"i_{\rm time}", ylabel=L"n_{\rm outer}", line=nothing, marker=:circle, ylims=(0,maximum(niter)+1), ms=2)
+	plot!(twinx(), sol[2:end,2], color=:red, ylabel=L"σ", label="", lw=2, ylim=(0,1))
 end
 
 # ╔═╡ 27577ae2-a446-49a8-a8f1-68198d89718d
 let
 	red_info = [reduce(vcat,[iter_info[5:end] for iter_info in sol_infoᵢ]) for sol_infoᵢ in sol_info]
 	boxplot(red_info, label="", xlabel=L"i_{\rm time}", ylabel=L"n_{\rm inner}")
+end
+
+# ╔═╡ d3054327-5f26-46fd-a6df-ec1466333ec9
+let
+	h = 0.5*V./(2*π*sol[:,3].^2)
+	t = sol[:,1]
+	Δt = sol[2:end,1]-sol[1:end-1,1]
+	∂h∂t = (h[2:end]-h[1:end-1])./(t[2:end]-t[1:end-1])
+	plot(t[2:end-1], -(∂h∂t.*Δt./h[1:end-1])[2:end], lw=2, label=L"-\frac{\dot{h} \Delta t}{h}", yscale=:log10, xlims=(Δt[1],T), xscale=:log10, xlabel=L"t~[s]")
+	plot!([t[2],t[end]], [Δₘₐₓ, Δₘₐₓ], xscale=:log10, yscale=:log10, label=L"\Delta_{\rm max}", lw=2)
 end
 
 # ╔═╡ Cell order:
@@ -325,13 +367,18 @@ end
 # ╟─ffe187b0-45e6-4b42-98c8-5013d232ee01
 # ╟─da4031fa-1ff6-45ff-ab48-2ba31a6f1300
 # ╟─76aa1611-f856-4baa-b6c5-095d85c86445
+# ╟─a210cf54-d098-4e09-9724-5d2c71119926
 # ╟─9cc0c580-652e-44d8-8e0d-7291fc16e36e
+# ╟─8b2900e6-e785-443d-a6c3-7ee5da5d4397
+# ╟─cbdc03d9-a76e-40e3-a4ad-44395a41378c
 # ╟─41529b16-8175-4c8d-9f0f-8ba63f83ff6b
+# ╟─81d07b2b-16e7-4f1b-b965-6caf471c769f
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─f4fe528d-d827-49fb-a6a9-59c5508aadcb
 # ╟─3ab29162-283d-44d0-a378-0f93937e3f3f
 # ╟─f339ac8d-4544-41fd-ae00-7cac56c49215
 # ╟─7ffd160c-3125-41ff-bb6c-b72fa26f4e08
-# ╠═8a353e56-f77f-4f9d-b2eb-26a04507db7c
+# ╟─8a353e56-f77f-4f9d-b2eb-26a04507db7c
 # ╟─9faeebaf-4210-402e-b903-2b1f2e2ed5a9
 # ╟─27577ae2-a446-49a8-a8f1-68198d89718d
+# ╟─d3054327-5f26-46fd-a6df-ec1466333ec9
