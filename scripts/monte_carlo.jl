@@ -40,7 +40,7 @@ function run_squeezeflow(Nᵣ, Δt₀, Nₜ; scenario)
     return sol, [τ₁, K, n, log₁₀η₀, R₀, V, F, sum(size.(info,1))]
 end
 
-Nₛ = 10_000  # Number of samples
+Nₛ = 1_000  # Number of samples
 Nᵣ = 2^4 # Number of radial points
 Nₜ = 2^9 # Number of time steps
 Δt₀ = 2.0^-9 # Initial time step

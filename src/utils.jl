@@ -1,6 +1,23 @@
 using NLsolve
 
 """
+Custom exception thrown when Newton's method fails to converge.
+
+Carries the final residual value, the last solution approximation, and the
+current bracket values so callers can log or decide a fallback strategy.
+"""
+struct NewtonDidNotConverge{T<:Real} <: Exception
+    residual::T
+    x::T
+    bracket::Tuple{T,T}
+end
+
+function Base.showerror(io::IO, e::NewtonDidNotConverge)
+    print(io, "Newton solver did not converge. Last residual: ", e.residual,
+            " at x=", e.x, ". Bracket=[", e.bracket[1], ", ", e.bracket[2], "]")
+end
+
+"""
     right_integrate(rᵥ, fₘ)
 
 Compute the right integral of a function sampled at midpoints.

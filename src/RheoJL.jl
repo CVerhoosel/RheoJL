@@ -18,6 +18,6 @@ module RheoJL
     export velocity_profile, flux, force
 
     # Exports from "solver.jl"
-    export solve_∂p∂r, solve_system, integrate_system, newton
+    export solve_∂p∂r, solve_system, integrate_system, newton, NewtonDidNotConverge
 
 end # module RheoJL
