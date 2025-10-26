@@ -8,7 +8,7 @@ function residual_∂p∂r(h, ∂p∂r, τ₁, K, n, η₀, Q; β=nothing)
     return r, ∂r∂∂p∂r, []
 end
 
-function solve_∂p∂r(h, τ₁, K, n, η₀, Q; β=nothing, ∂p∂r₀=0.0, rtol=1e-6, atol=1e-12, maxiter=1_000, bracket=[-Inf, Inf], output=:short)
+function solve_∂p∂r(h, τ₁, K, n, η₀, Q; β=nothing, ∂p∂r₀=0.0, rtol=1e-8, atol=1e-16, maxiter=1_000, bracket=[-Inf, Inf], output=:short)
 
     @assert Q isa Real && Q ≥ -eps()  "Q must be a non-negative real number, since this should be enforced via the outer loop bracket."
 
@@ -25,7 +25,7 @@ function solve_∂p∂r(h, τ₁, K, n, η₀, Q; β=nothing, ∂p∂r₀=0.0, r
 	return ∂p∂r, info
 end
 
-function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ=nothing, α=nothing, ∂p∂r₀ₘ=nothing, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=1_000, bracketinner=[-Inf, Inf], outputinner=:short)
+function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ=nothing, α=nothing, ∂p∂r₀ₘ=nothing, output=:short, rtolinner=1e-8, atolinner=1e-16, maxiterinner=1_000, bracketinner=[-Inf, Inf], outputinner=:short)
 
     @assert ∂h∂t isa Real && ∂h∂t ≤ eps() "∂h∂t must be a non-positive real number, since this should be enforced via the outer loop bracket."
     @assert all(rᵥ .≥ -eps()) && all(isreal, rᵥ) "All rᵥ must be non-negative real numbers"
@@ -65,7 +65,7 @@ function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ
     return r, ∂r∂∂h∂t, iterations
 end
 
-function solve_system(h, R, τ₁, K, n, η₀, F, N; β=nothing, γ=nothing, α=nothing, ∂h∂t₀=0.0, ∂p∂r₀ₘ=nothing, rtol=1e-6, atol=1e-12, maxiter=25, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=1_000, bracketinner=[-Inf, Inf], outputinner=:short)
+function solve_system(h, R, τ₁, K, n, η₀, F, N; β=nothing, γ=nothing, α=nothing, ∂h∂t₀=0.0, ∂p∂r₀ₘ=nothing, rtol=1e-6, atol=1e-12, maxiter=25, output=:short, rtolinner=1e-8, atolinner=1e-16, maxiterinner=1_000, bracketinner=[-Inf, Inf], outputinner=:short)
 
     # Get the vertices mesh
     rᵥ = collect(range(0, R, length=N+1))
@@ -177,7 +177,6 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
                 if bracket[1] < xₙ < bracket[2]
                     xᵢ = xₙ
                 else
-                    # Use bisection instead of the Newton proposal if the proposal is not within the bracket
                     xᵢ = (bracket[1] + bracket[2]) / 2
                 end
             end
@@ -194,22 +193,17 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
             end
         end
 
-        # Store the new iteration for output
-        if output==:long
-            push!(info, [xᵢ, rᵢ, bracket[1], bracket[2], iterstats...])
-        end
-
         # Check whether the solution has converged
         if abs(rᵢ) < tol
             return xᵢ, output==:long ? info : i
         end
     end
 
-    error("Newton solver did not converge in $(maxiter) iterations")
+    throw(NewtonDidNotConverge(rᵢ, xᵢ, (bracket[1], bracket[2])))
 end
 
 function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ, Δt₀; β=nothing, γ=nothing, α=nothing, Δₘₐₓ=0.1, target=5,
-    rtol=1e-6, atol=1e-12, maxiter=100, output=:short, rtolinner=1e-6, atolinner=1e-12, maxiterinner=1_000, outputinner=:short)
+    rtol=1e-6, atol=1e-12, maxiter=100, output=:short, rtolinner=1e-8, atolinner=1e-16, maxiterinner=1_000, outputinner=:short)
  
     @assert output in [:short, :long] "Output must be either :short or :long."
 
@@ -248,7 +242,7 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ, Δt�
             rtolinner=rtolinner, atolinner=atolinner, maxiterinner=maxiterinner, outputinner=outputinner)
 
         info = push!(info, ∂h∂t_info)
-
+        
         # Update the pressure gradient
         Qₘ      = -∂h∂t*rₘ
         results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂rₘ[i], rtol=rtolinner, atol=atolinner, maxiter=maxiterinner, output=outputinner) for i in eachindex(Qₘ)]
