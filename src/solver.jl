@@ -1,7 +1,7 @@
 function residual_∂p∂r(h, ∂p∂r, τ₁, K, n, η₀, Q; β=nothing)
 
     Qᵢ, ∂Q∂∂p∂rᵢ = flux(h, ∂p∂r, τ₁, K, n, η₀; β=β)
-    
+
     r       = Qᵢ - Q
     ∂r∂∂p∂r = ∂Q∂∂p∂rᵢ
 
@@ -29,7 +29,7 @@ function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ
 
     @assert ∂h∂t isa Real && ∂h∂t ≤ eps() "∂h∂t must be a non-positive real number, since this should be enforced via the outer loop bracket."
     @assert all(rᵥ .≥ -eps()) && all(isreal, rᵥ) "All rᵥ must be non-negative real numbers"
-    
+
     rₘ = vertex_to_midpoint(rᵥ)
     R  = rᵥ[end]
 
@@ -60,7 +60,7 @@ function residual_force(∂h∂t, h, τ₁, K, n, η₀, F, rᵥ; β=nothing, γ
 
     # Compute the residual
     r       = force(rᵥ, ∂p∂rₘ; h=h, γ=γ, α=α) - F
-    ∂r∂∂h∂t = force(rᵥ, ∂∂p∂r∂∂h∂tₘ; h=h, γ=γ, α=α)
+    ∂r∂∂h∂t = force(rᵥ, ∂∂p∂r∂∂h∂tₘ)
 
     return r, ∂r∂∂h∂t, iterations
 end
@@ -117,7 +117,7 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
     end
 
     @assert prod(extrema) < 0 "The bracket extrema should be of opposite sign."
-    
+
     # Initialize the solution
     xᵢ = copy(x₀)
     rᵢ, ∂rᵢ, iterstats = residual(xᵢ)
@@ -139,7 +139,7 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
 
         # Propose Newton update
         xₙ = xᵢ - rᵢ/∂rᵢ
-        
+
         if all(isinf.(bracket))
             # Bracket is unbounded on both sides, i.e., [-∞,∞]
 
@@ -199,12 +199,12 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
         end
     end
 
-    throw(NewtonDidNotConverge(rᵢ, xᵢ, (bracket[1], bracket[2])))
+    throw(NewtonDidNotConverge(rᵢ, xᵢ, (bracket[1], bracket[2]), maxiter))
 end
 
 function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ, Δt₀; β=nothing, γ=nothing, α=nothing, Δₘₐₓ=0.1, target=5,
     rtol=1e-6, atol=1e-12, maxiter=100, output=:short, rtolinner=1e-8, atolinner=1e-16, maxiterinner=1_000, outputinner=:short)
- 
+
     @assert output in [:short, :long] "Output must be either :short or :long."
 
     # Initialization
@@ -238,11 +238,11 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ, Δt�
 
         # Update the height rate
         ∂h∂t, ∂h∂t_info = solve_system(h, R, τ₁, K, n, η₀, F, Nᵣ; β=β, γ=γ, α=α, ∂h∂t₀=∂h∂t, ∂p∂r₀ₘ=∂p∂rₘ,
-            rtol=rtol, atol=atol, maxiter=maxiter, output=output, 
+            rtol=rtol, atol=atol, maxiter=maxiter, output=output,
             rtolinner=rtolinner, atolinner=atolinner, maxiterinner=maxiterinner, outputinner=outputinner)
 
         info = push!(info, ∂h∂t_info)
-        
+
         # Update the pressure gradient
         Qₘ      = -∂h∂t*rₘ
         results = [solve_∂p∂r(h, τ₁, K, n, η₀, Qₘ[i]; β=β, ∂p∂r₀=∂p∂rₘ[i], rtol=rtolinner, atol=atolinner, maxiter=maxiterinner, output=outputinner) for i in eachindex(Qₘ)]
@@ -263,7 +263,7 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ, Δt�
         if Δₘₐₓ !== nothing && Δt*∂h∂t < -Δₘₐₓ*h
             Δt = -Δₘₐₓ*h/∂h∂t
         end
-        
+
         # Clip the time step to not exceed the final time
         if Δt > T-t
             Δt = T-t
@@ -274,7 +274,7 @@ function integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ, Δt�
         h    = h + ∂h∂t * Δt
         R    = sqrt(V/(2*π*h))
         ∂R∂t = -R*∂h∂t/(2*h)
-        
+
         # Store the solution
         push!(sol, [t σ R])
     end

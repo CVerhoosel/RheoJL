@@ -2,18 +2,25 @@ using RheoJL
 using Distributions, Random, Statistics
 using ProgressMeter, StatsPlots, LaTeXStrings
 
-n_lower = 0.1
-n_upper = 1.0
+# Randomization settings
+Random.seed!(42)
 nbins = 9
 
 # Test scenario
+n_lower = 0.1
+n_upper = 1.0
+
+# Parameter distributions
 scenario = (τ₁ = Uniform(0.0, 100.0),  # Pa
             K  = truncated(Normal(50.0, 25.0); lower=0.0),   # Pa⋅s^n
-            n  = truncated(Normal(0.5, 0.25);lower=n_lower, upper=n_upper), 
+            n  = truncated(Normal(0.5, 0.25);lower=n_lower, upper=n_upper),
             log₁₀η₀ = Uniform(2, 7), # Pa⋅s
             R₀ = truncated(Normal(1e-2, 0.5e-2);lower=0.001), # m
             V  = truncated(Normal(1e-6, 0.5e-6);lower=0.001), # m^3
             F  = truncated(Normal(1.0, 0.5);lower=0.0), # N
+            α  = truncated(Normal(0.5, 0.1); lower=0.1, upper=0.9), # [-]
+            γ  = truncated(Normal(0.05, 0.01); lower=0.01), # N/m
+            β  = truncated(Normal(1_000_000, 100_000); lower=0.0), # Pa⋅s/m
             T  = 100.0) # s
 
 function scenario_mean(scenario::NamedTuple)
@@ -29,15 +36,23 @@ function scenario_rand(scenario::NamedTuple)
 end
 
 function run_squeezeflow(Nᵣ, Δt₀, Nₜ; scenario)
-    (; τ₁, K, n, log₁₀η₀, R₀, V, F, T) = scenario
+    (; τ₁, K, n, log₁₀η₀, R₀, V, F, T, α, γ, β) = scenario
     h₀ = (V/(π*R₀^2))/2
     η₀ = 10.0^log₁₀η₀
 
-    sol, sol_info = integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ, Δt₀; output=:long)
-
-    info = [reduce(vcat,[iter_info[5:end] for iter_info in sol_infoᵢ]) for sol_infoᵢ in sol_info]
-    
-    return sol, [τ₁, K, n, log₁₀η₀, R₀, V, F, sum(size.(info,1))]
+    try
+        sol, sol_info = integrate_system(h₀, R₀, τ₁, K, n, η₀, F, Nᵣ, T, Nₜ, Δt₀; β=β, γ=γ, α=α, output=:long)
+        info = [reduce(vcat,[iter_info[5:end] for iter_info in sol_infoᵢ]) for sol_infoᵢ in sol_info]
+        return sol, [τ₁, K, n, log₁₀η₀, R₀, V, F, α, γ, β, sum(size.(info,1))]
+    catch e
+        if e isa NewtonDidNotConverge
+            println("Newton solver did not converge for scenario:")
+            println(scenario)
+            rethrow(e)
+        else
+            rethrow(e)
+        end
+    end
 end
 
 Nₛ = 1_000  # Number of samples
@@ -62,7 +77,7 @@ function bin_iterations_by_col(sample_mat::AbstractMatrix, col::Integer, edges)
 
     nbins = length(edges) - 1
 
-    # prepare bins: each bin will collect the iterations (last column) as Float64
+    # Prepare bins: each bin will collect the iterations (last column)
     bins = [Float64[] for _ in 1:nbins]
     for r in 1:size(sample_mat,1)
         v = sample_mat[r, col]
@@ -77,12 +92,12 @@ edges = collect(range(n_lower, n_upper; length=nbins+1))
 centers = 0.5*(edges[2:end]+edges[1:end-1])
 binned = bin_iterations_by_col(sample_mat, 3, edges)
 
-# filter empty bins first
+# Filter empty bins
 nonempty = findall(!isempty, binned)
 binned_nonempty = binned[nonempty]
 centers_nonempty = centers[nonempty]
 
-# category indices 1..k
+# Category indices 1..k
 idxs = 1:length(binned_nonempty)
 
 boxplot(idxs, binned_nonempty;
