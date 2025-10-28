@@ -1,3 +1,47 @@
+"""
+    shear_stress(γ, τ₁, K, n, η₀)
+
+Compute the shear stress using the regularized Herschel-Bulkley model.
+
+The regularized Herschel-Bulkley model provides a smooth transition from 
+Newtonian behavior at low shear rates to power-law behavior at high shear rates,
+avoiding the discontinuity at the yield stress.
+
+# Arguments
+- `γ`: Shear rate (1/s)
+- `τ₁`: Yield stress (Pa)
+- `K`: Consistency index (Pa⋅sⁿ)
+- `n`: Flow behavior index (dimensionless)
+- `η₀`: Newtonian viscosity at low shear rates (Pa⋅s)
+
+# Returns
+- `τ`: Shear stress (Pa)
+
+# Model description
+For low shear rates (η₀|γ| > τ₁):
+    τ = η₀γ  (Newtonian behavior)
+
+For high shear rates (η₀|γ| ≤ τ₁):
+    τ = sign(γ)(τ₀ + K|γ|ⁿ)  (Power-law behavior)
+    
+where τ₀ = τ₁ - K(τ₁/η₀)ⁿ ensures continuity at the transition point.
+"""
+function shear_stress(γ, τ₁, K, n, η₀)
+    @assert τ₁ ≥ 0 "τ₁ must be non-negatve"
+    @assert η₀ > 0 "η₀ must be positive" 
+    @assert n > 0 "n must be positive"
+    @assert K > 0 "K must be positive"
+
+    if η₀ * abs(γ) ≤ τ₁
+        τ = η₀*γ
+    else
+        τ₀ = τ₁ - K * (τ₁/η₀)^n
+        τ = sign(γ)*(τ₀ + K*abs(γ)^n)
+    end
+
+    return τ
+end
+
 function velocity_profile(h, ∂p∂r, τ₁, K, n, η₀; β=nothing, np=1_000)
 
     @assert τ₁ ≥ 0 "τ₁ must be non-negatve"

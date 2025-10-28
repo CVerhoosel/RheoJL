@@ -11,6 +11,14 @@
         z, v, nw = velocity_profile(h, ∂p∂r, τ₁, K, n, η₀)
         Q, ∂Q = flux(h, ∂p∂r, τ₁, K, n, η₀)
 
+        # Momentum balance check
+        γ = diff(v) ./ diff(z)
+        τ = shear_stress.(γ, τ₁, K, n, η₀)
+
+        @test all(isapprox.(τ, ∂p∂r*vertex_to_midpoint(z), rtol=1e-2)) # Complete profile
+        @test all(isapprox.(τ[1:nw-1], ∂p∂r*vertex_to_midpoint(z[1:nw]), rtol=1e-7)) # Unyielded region
+        @test all(isapprox.(τ[nw+1:end], ∂p∂r*vertex_to_midpoint(z[nw+1:end]), rtol=1e-5)) # Yielded region
+
         # Trapezoidal integration flux test
         @test Q≈2*trapz(z, v) rtol=1e-6
 
