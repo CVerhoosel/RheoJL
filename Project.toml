@@ -1,6 +1,6 @@
 name = "RheoJL"
 uuid = "83cecadf-1f82-4b25-be75-6a85a96a7494"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Clemens Verhoosel <c.v.verhoosel@tue.nl>"]
 
 [deps]

@@ -10,10 +10,11 @@ struct NewtonDidNotConverge{T<:Real} <: Exception
     residual::T
     x::T
     bracket::Tuple{T,T}
+    niter::Int
 end
 
 function Base.showerror(io::IO, e::NewtonDidNotConverge)
-    print(io, "Newton solver did not converge. Last residual: ", e.residual,
+    print(io, "Newton solver did not converge in ", e.niter, " iterations. Last residual: ", e.residual,
             " at x=", e.x, ". Bracket=[", e.bracket[1], ", ", e.bracket[2], "]")
 end
 

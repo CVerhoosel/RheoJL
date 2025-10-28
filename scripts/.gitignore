@@ -1,0 +1,3 @@
+*.jl
+~convergence.jl
+~monte_carlo.jl
