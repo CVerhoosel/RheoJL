@@ -1,6 +1,7 @@
 using RheoJL
 using LaTeXStrings
 using Plots, Interpolations, Statistics
+using ReadVTK
 
 # Test scenario
 scenario = (τ₁ = 10.0,  # Pa
@@ -128,9 +129,9 @@ Nₜ = [2^7, 2^8, 2^9, 2^10, 2^11, 2^12, 2^13]
 T_ref = @elapsed ref, ref_info = run_squeezeflow(Nᵣ[end], Δt₀[end], Nₜ[end]; scenario, tₘ)
 println("Reference simulation time: $T_ref [s]")
 
-mesh_convergence(Nᵣ, Δt₀[end], Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
-time_convergence(Nᵣ[end], Δt₀[end], Nₜ, 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
-init_convergence(Nᵣ[end], Δt₀, Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
+# mesh_convergence(Nᵣ, Δt₀[end], Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
+# time_convergence(Nᵣ[end], Δt₀[end], Nₜ, 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
+# init_convergence(Nᵣ[end], Δt₀, Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
 
 T_opt = @elapsed opt, opt_info = run_squeezeflow(Nᵣ[3], Δt₀[3], Nₜ[3]; scenario, tₘ)
 println("Optimized simulation time: $T_opt [s]")
@@ -158,3 +159,87 @@ errTFEM = plot( TFEM[!,"t[s]"][2:end], abs.(TFEM[!,"R[m]"][2:end] .- ref_TFEM[2:
 plot!(tₘ, abs.(itp_TFEM(tₘ)-itp_ref_TFEM(tₘ)) ./ itp_TFEM(tₘ), label="", marker=:x, markersize=5, markerstrokewidth=2, xscale=:log10, yscale=:log10, line=nothing, color=1, xlims=(tₘ[1]/2, tₘ[end]*2), legend=false)
 savefig(errTFEM, joinpath(outdir, "TFEMerror_vs_t.pdf"))
 display(errTFEM)
+
+tᵢ = opt[end,1]
+Rᵢ = opt[end,3]
+hᵢ = scenario.V/(2*π*Rᵢ^2)
+∂h∂tᵢ, infoᵢ = solve_system(hᵢ, Rᵢ, scenario.τ₁, scenario.K, scenario.n, scenario.η₀, scenario.F, Nᵣ[3]; output=:long)
+rᵢ = vertex_to_midpoint(collect(range(0, Rᵢ, length=Nᵣ[3])))
+Qᵢ = -∂h∂tᵢ * rᵢ
+∂p∂rᵢ = first.(solve_∂p∂r.(hᵢ, scenario.τ₁, scenario.K, scenario.n, scenario.η₀, Qᵢ; bracket=[-Inf,0]))
+pᵢ = right_integrate(collect(range(0, Rᵢ, length=Nᵣ[3])), ∂p∂rᵢ)
+
+∂p∂r_interp = linear_interpolation(rᵢ, ∂p∂rᵢ)
+
+#########################
+# Comparison with T-FEM #
+#########################
+
+# Load VTK file
+h5_file = joinpath(@__DIR__, "..", "data", "T-FEM-t100.h5")
+
+using JLD2
+data = jldopen(h5_file)
+points = data["points"][1:2, :]'
+
+nr = 41
+nz = 41
+
+r = points[1:nr:end,2]
+z = points[1:nz,1]
+z = z .- z[1]
+v = zeros(nz, nr)
+τ = zeros(nz, nr)
+for ir in 1:nr
+   for iz in 1:nz
+         idx = (ir-1)*nz + nz + 1 - iz
+         v[iz,ir] = data["point_data"]["velocity"][2,idx]
+         τ[iz,ir] = data["point_data"]["tau_zr"][idx]
+    end
+end
+
+vc_fig = contourf(r ./ Rᵢ, z ./ hᵢ, v, 
+    levels=16,
+    color=:turbo, 
+    xlabel=L"r~[mm]", 
+    ylabel=L"z~[mm]",
+    colorbar_title=L"v~[mm/s]",
+    colorbar=:bottom,
+    colorbar_formatter=:scientific,
+    fillalpha=1,
+    linewidth=0.0
+    )
+
+savefig(vc_fig, joinpath(outdir, "vcontour.pdf"))
+display(vc_fig)
+
+τc_fig = contourf(r ./ Rᵢ, z ./ hᵢ, τ / scenario.τ₁, 
+    levels=collect(0:0.25:3.5),
+    color=:turbo, 
+    xlabel=L"r / R", 
+    ylabel=L"2 z / H",
+    colorbar_title=L"τ / \tau_y",
+    colorbar=:bottom,
+    colorbar_formatter=:scientific,
+    fillalpha=1.0,
+    linewidth=0.0
+    )
+
+plot!(rᵢ / Rᵢ, (scenario.τ₁ ./ abs.(∂p∂rᵢ)) / hᵢ, lw=4, color=:white, label="", xlims=[0,1], ylims=[0,1],
+    marker=:circle, markersize=5, markerstrokewidth=0)
+
+savefig(τc_fig, joinpath(outdir, "τcontour.pdf"))
+display(τc_fig)
+
+rslices = [11, 21, 31]
+
+
+v_plot = plot()
+for (i, rslice) in enumerate(rslices)
+    plot!(v[:,rslice] ./ v[1,end], z ./ hᵢ, lw=2, ylabel=L"2 z / H", xlabel=L"v / v(R,0)", label="r / R = $(round(r[rslice]/Rᵢ, digits=2))", color=i, ls=:dash)
+
+    zs, vs, np1 = velocity_profile(hᵢ, ∂p∂r_interp(r[rslice]), scenario.τ₁, scenario.K, scenario.n, scenario.η₀)
+    plot!(vs ./ v[1,end], zs ./ hᵢ, lw=2, label="", color=i)
+end
+savefig(v_plot, joinpath(outdir, "vprofiles.pdf"))
+display(v_plot)

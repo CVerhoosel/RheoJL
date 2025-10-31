@@ -193,6 +193,11 @@ function newton(residual; x₀=0.0, tol=1e-9, maxiter=25, bracket=[-Inf, Inf], o
             end
         end
 
+        # Store the new iteration for output
+        if output==:long
+            push!(info, [xᵢ, rᵢ, bracket[1], bracket[2], iterstats...])
+        end
+
         # Check whether the solution has converged
         if abs(rᵢ) < tol
             return xᵢ, output==:long ? info : i

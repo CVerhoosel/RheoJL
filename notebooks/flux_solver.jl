@@ -156,7 +156,7 @@ let
 	Q_max, _ = flux(h, dpdr_max, τ₁, K, n, η₀)
 	Q_range = range(0, abs(Q_max),length=100)
 	md"""
-	``Q~[m^2/s]``: $(@bind Q Slider(Q_range; default=0.5*abs(Q_max), show_value=true))
+	``Q~[m/s]``: $(@bind Q Slider(Q_range; default=0.5*abs(Q_max), show_value=true))
 	# """
 end
 

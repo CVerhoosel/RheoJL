@@ -1,33 +1,38 @@
 name = "RheoJL"
 uuid = "83cecadf-1f82-4b25-be75-6a85a96a7494"
-version = "1.0.1"
+version = "1.0.2"
 authors = ["Clemens Verhoosel <c.v.verhoosel@tue.nl>"]
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinearInterpolations = "b20c7882-2490-4592-a606-fbbfe9e745e8"
 NLsolve = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"
+ReadVTK = "dc215faf-f008-4882-a9f7-a79a826fadc3"
 
 [compat]
 CSV = "0.10.15"
 DataFrames = "1.7.1"
 Documenter = "1"
 Interpolations = "0.16.2"
+JLD2 = "0.6.2"
 LinearAlgebra = "1.11"
 LinearInterpolations = "0.1.4"
 Logging = "1.11"
 NLsolve = "4.5.1"
+ReadVTK = "0.2.5"
 Test = "1.11"
 Trapz = "2.0.3"
 
 [extras]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+ReadVTK = "dc215faf-f008-4882-a9f7-a79a826fadc3"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Trapz = "592b5752-818d-11e9-1e9a-2b8ca4a44cd1"
 
 [targets]
-test = ["Documenter", "Logging", "Test", "Trapz"]
+test = ["Documenter", "Logging", "Test", "Trapz", "ReadVTK"]

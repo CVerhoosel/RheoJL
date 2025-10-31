@@ -161,23 +161,25 @@ end
 # ╔═╡ f68edc63-fdf9-497a-89cb-355ca91032e6
 z, v, nw = velocity_profile(h, dpdr, τ₁, K, n, η₀; β=β);
 
-# ╔═╡ d5788ee3-73a0-432d-b7f3-eeb6f7c5b706
+# ╔═╡ 35b29653-d0bb-46ee-9d28-c03ebf6a09e0
 let
 	∂γ∂t_max = abs((v[end]-v[end-1])/(z[end]-z[end-1]))
-	plot([-∂γ∂t₀,∂γ∂t₀], [-τ₁,τ₁], lw=2, xlabel=L"\dot{\gamma}~[1/s]", ylabel=L"\tau~[Pa]", label="No yielding")
-	if ∂γ∂t_max > ∂γ∂t₀
-		∂γ∂t = range(∂γ∂t₀, ∂γ∂t_max, length=100)
-		plot!(∂γ∂t, τ₀.+K*∂γ∂t.^n; lw=2, color=2, label="Yielding")
-		plot!(-∂γ∂t, -τ₀.-K*∂γ∂t.^n; lw=2, color=2, label="")
-	end
-	plot!(title="Constitutive behavior")
+	∂γ∂t = range(-∂γ∂t₀, ∂γ∂t₀, length=100)
+	τ = shear_stress.(∂γ∂t, τ₁, K, n, η₀)
+	plot(∂γ∂t, τ; lw=2, color=1, label="Unyielded")
+	∂γ∂t = range(∂γ∂t₀, ∂γ∂t_max, length=100)
+	τ = shear_stress.(∂γ∂t, τ₁, K, n, η₀)
+	plot!(∂γ∂t, τ; lw=2, color=2, label="Yielded")
+	∂γ∂t = range(-∂γ∂t_max,-∂γ∂t₀, length=100)
+	τ = shear_stress.(∂γ∂t, τ₁, K, n, η₀)
+	plot!(∂γ∂t, τ; lw=2, color=2, label="", xlabel=L"\dot{\gamma}~[1/s]", ylabel=L"\tau~[Pa]", title="Constitutive behavior")
 end
 
 # ╔═╡ 44d74c6c-5618-4290-84e3-a48a957a752c
 let
-	plot(v[1:nw], z[1:nw], label="Non-yielding", lw=2, xlabel=L"v~[m/s]", ylabel=L"z~[m]")
+	plot(v[1:nw], z[1:nw], label="Unyielded", lw=2, xlabel=L"v~[m/s]", ylabel=L"z~[m]")
 	xlim = v[1] > 0 ? (0, 1.1*v[1]) : (1.1*v[1],0)
-	plot!(v[nw+1:end], z[nw+1:end], label="Yielding", lw=2, title="Velocity profile", xlims=xlim)
+	plot!(v[nw+1:end], z[nw+1:end], label="Yielded", lw=2, title="Velocity profile", xlims=xlim)
 	plot!([v[end],0], [z[end],z[end]], label="Slip", lw=2, title="Velocity profile", xlims=xlim)
 end
 
@@ -201,5 +203,5 @@ end
 # ╟─e024bd4c-e501-42c8-9396-6900b3f5c583
 # ╟─2088b8d6-d9b1-4f8d-bcd8-44f872b333a9
 # ╟─f68edc63-fdf9-497a-89cb-355ca91032e6
-# ╟─d5788ee3-73a0-432d-b7f3-eeb6f7c5b706
+# ╟─35b29653-d0bb-46ee-9d28-c03ebf6a09e0
 # ╟─44d74c6c-5618-4290-84e3-a48a957a752c
