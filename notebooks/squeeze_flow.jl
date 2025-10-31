@@ -299,7 +299,7 @@ begin
 end
 
 # ╔═╡ 3ab29162-283d-44d0-a378-0f93937e3f3f
-	boxplot(reduce(hcat,info)[5:end,:], label="", xlabel=L"i_{\rm outer}", ylabel=L"n_{\rm inner}")
+	boxplot(reduce(hcat,info)[5:end,:], label="", xlabel=L"i_{\rm outer}", ylabel=L"n_{inner}", normalize=:pdf)
 
 # ╔═╡ f339ac8d-4544-41fd-ae00-7cac56c49215
 md"""## Time integration"""
@@ -316,20 +316,20 @@ begin
 		df = load_data(data_file)
 		plot!(Vector(df[!,"t[s]"]), Vector(df[!,"R[m]"]), label=data_file, lw=2)
 	end
-	plot!()
+	plot!(title="Radius evolution")
 end
 
 # ╔═╡ 9faeebaf-4210-402e-b903-2b1f2e2ed5a9
 let
 	niter = [size(sol_infoᵢ,1)-1 for sol_infoᵢ in sol_info]
-	plot(niter , label="", xlabel=L"i_{\rm time}", ylabel=L"n_{\rm outer}", line=nothing, marker=:circle, ylims=(0,maximum(niter)+1), ms=2)
+	plot(niter , label="", xlabel=L"i_{\rm time}", ylabel=L"n_{\rm outer}", line=nothing, marker=:circle, ylims=(0,maximum(niter)+1), ms=2, title="Outer iterations")
 	plot!(twinx(), sol[2:end,2], color=:red, ylabel=L"σ", label="", lw=2, ylim=(0,1))
 end
 
 # ╔═╡ 27577ae2-a446-49a8-a8f1-68198d89718d
 let
 	red_info = [reduce(vcat,[iter_info[5:end] for iter_info in sol_infoᵢ]) for sol_infoᵢ in sol_info]
-	boxplot(red_info, label="", xlabel=L"i_{\rm time}", ylabel=L"n_{\rm inner}")
+	boxplot(red_info, label="", xlabel=L"i_{\rm time}", ylabel=L"n_{\rm inner}", title="Inner iterations")
 end
 
 # ╔═╡ d3054327-5f26-46fd-a6df-ec1466333ec9
@@ -338,7 +338,7 @@ let
 	t = sol[:,1]
 	Δt = sol[2:end,1]-sol[1:end-1,1]
 	∂h∂t = (h[2:end]-h[1:end-1])./(t[2:end]-t[1:end-1])
-	plot(t[2:end-1], -(∂h∂t.*Δt./h[1:end-1])[2:end], lw=2, label=L"-\frac{\dot{h} \Delta t}{h}", yscale=:log10, xlims=(Δt[1],T), xscale=:log10, xlabel=L"t~[s]")
+	plot(t[2:end-1], -(∂h∂t.*Δt./h[1:end-1])[2:end], lw=2, label=L"-\frac{\dot{h} \Delta t}{h}", yscale=:log10, xlims=(Δt[1],T), xscale=:log10, xlabel=L"t~[s]", title="Time step limiting")
 	plot!([t[2],t[end]], [Δₘₐₓ, Δₘₐₓ], xscale=:log10, yscale=:log10, label=L"\Delta_{\rm max}", lw=2)
 end
 

@@ -101,7 +101,8 @@ end
 
 function list_data_files()
     data_path = joinpath(@__DIR__, "..", "data")
-    return readdir(data_path)
+    files = readdir(data_path)
+    return filter(f -> isfile(joinpath(data_path, f)) && endswith(lowercase(f), ".txt"), files)
 end
 
 function load_data(name; delim=' ', ignorerepeated=true)
