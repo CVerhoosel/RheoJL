@@ -76,7 +76,7 @@ function velocity_profile(h, ∂p∂r, τ₁, K, n, η₀; β=nothing, np=1_000)
         # Centerline velocity
         vc = (1/(α*ρ)) * ((abs(α)*wy - γ)^ρ - (abs(α)*h - γ)^ρ) - 0.5 * (∂p∂r / η₀) * wy^2
 
-        v = 0.5*∂p∂r/η₀ * z.^2 .+ vc .+ vₛ
+        v = 0.5* (∂p∂r / η₀) * z.^2 .+ vc .+ vₛ
 
         z2 = z[np1+1:end]
         v2 = (1/(α*ρ)) * ((abs(α)*z2 .- γ).^ρ .- (abs(α)*h .- γ).^ρ) .+ vₛ
