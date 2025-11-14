@@ -74,7 +74,7 @@ function solve_∂γ∂t(∂γ∂tₑ; τ₁, K, n, η₀, βH, maxiter, tol)
 				return 0., βH*∂γ∂tₑ
 			else # Yielding
 				r = x -> (x - ∂γ∂tₑ + τ₁/βH + σ*x^n, 1 + n*σ*x^(n-1), [])
-				∂γ∂t, info = newton(r, x₀=tol, bracket=[0., Inf], maxiter=maxiter, tol=tol)
+				∂γ∂t, info = newton(r, x₀=∂γ∂tₑ, bracket=[0., ∂γ∂tₑ], maxiter=maxiter, tol=tol)
 				return ∂γ∂t, nothing
 			end
 		end
@@ -107,7 +107,7 @@ function solve_∂γ∂t(∂γ∂tₑ; τ₁, K, n, η₀, βH, maxiter, tol)
 				return ∂γ∂tₑ/(1 + μ), nothing
 			else # Yielding				
 				r = x -> (x - ∂γ∂tₑ + τ₀/βH + (K/βH)*x^n, 1 + n*(K/βH)*x^(n-1), [])
-				∂γ∂t, info = newton(r, x₀=∂γ∂t₁, bracket=[∂γ∂t₁, Inf], maxiter=maxiter, tol=tol)
+				∂γ∂t, info = newton(r, x₀=∂γ∂tₑ, bracket=[∂γ∂t₁, ∂γ∂tₑ], maxiter=maxiter, tol=tol)
 				return ∂γ∂t, nothing
 			end
 		end
