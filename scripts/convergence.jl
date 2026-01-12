@@ -129,11 +129,11 @@ Nₜ = [2^7, 2^8, 2^9, 2^10, 2^11, 2^12, 2^13]
 T_ref = @elapsed ref, ref_info = run_squeezeflow(Nᵣ[end], Δt₀[end], Nₜ[end]; scenario, tₘ)
 println("Reference simulation time: $T_ref [s]")
 
-# mesh_convergence(Nᵣ, Δt₀[end], Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
-# time_convergence(Nᵣ[end], Δt₀[end], Nₜ, 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
-# init_convergence(Nᵣ[end], Δt₀, Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
+mesh_convergence(Nᵣ, Δt₀[end], Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
+time_convergence(Nᵣ[end], Δt₀[end], Nₜ, 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
+init_convergence(Nᵣ[end], Δt₀, Nₜ[end], 2; scenario=scenario, tₘ=tₘ, T_ref=T_ref)
 
-T_opt = @elapsed opt, opt_info = run_squeezeflow(Nᵣ[3], Δt₀[3], Nₜ[3]; scenario, tₘ)
+T_opt = @elapsed opt, opt_info = run_squeezeflow(Nᵣ[2], Δt₀[2], Nₜ[3]; scenario, tₘ)
 println("Optimized simulation time: $T_opt [s]")
 println("Mean relative error: $(error(opt, ref, tₘ))")
 
@@ -148,7 +148,7 @@ display(fig)
 
 itp_ref = linear_interpolation(ref[:,1], ref[:,3])
 itp_opt = linear_interpolation(opt[:,1], opt[:,3])
-err = plot(opt[2:end,1], abs.(opt[2:end,3]-itp_ref(opt[2:end,1])) ./ itp_ref(opt[2:end,1]), label="Optimized", xscale=:log10, yscale=:log10, lw=2, color=1, xlims=(tₘ[1]/2, tₘ[end]*2), xlabel=L"t~[s]", ylabel="Relative error", legend=false, grid=:both, gridalpha=0.5, xticks=[0.1, 1, 10, 100], yticks=[0.001, 0.01], ylims=(0.001, 0.01))
+err = plot(opt[2:end,1], abs.(opt[2:end,3]-itp_ref(opt[2:end,1])) ./ itp_ref(opt[2:end,1]), label="Optimized", xscale=:log10, yscale=:log10, lw=2, color=1, xlims=(tₘ[1]/2, tₘ[end]*2), xlabel=L"t~[s]", ylabel="Relative error", legend=false, grid=:both, gridalpha=0.5, xticks=[0.1, 1, 10, 100], yticks=[0.001, 0.01], ylims=(0.001, 0.1))
 plot!(tₘ, abs.(itp_opt(tₘ)-itp_ref(tₘ)) ./ itp_ref(tₘ), label="", marker=:x, markersize=5, markerstrokewidth=2, xscale=:log10, yscale=:log10, line=nothing, color=1)
 savefig(err, joinpath(outdir, "error_vs_t.pdf"))
 display(err)
