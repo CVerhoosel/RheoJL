@@ -2,6 +2,7 @@ function solve_τ(∂γ∂tₑ; τ₁=nothing, K=nothing, n=nothing, η₀=nothi
 	@assert ∂γ∂tₑ ≥ 0. "Engineering γ̇ₑ shear rate should be non-negative"
 
 	∂γ∂t = nothing
+	τᵤ = nothing
 	if β===nothing && H===nothing
 		∂γ∂t = ∂γ∂tₑ
 	elseif β!==nothing && H!==nothing
